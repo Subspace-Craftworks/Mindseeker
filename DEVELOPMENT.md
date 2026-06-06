@@ -125,7 +125,8 @@ vercel env pull .env.local
 ## Useful Files
 
 - `.env.example`
-- `FE_BFF_IMPLEMENTATION_PLAN.md`
+- `FE_BFF_IMPLEMENTATION_PLAN_phase1.md`
+- `FE_BFF_IMPLEMENTATION_PLAN_phase2.md`
 - `supabase/functions/planning-api/README.md`
 - `supabase/functions/planning-api/PARAMETERS.md`
 - `supabase/migrations/20260606_create_chat_threads.sql`
