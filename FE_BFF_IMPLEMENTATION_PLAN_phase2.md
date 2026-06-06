@@ -128,3 +128,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: Shared app shell UI with sign-out was added for authenticated pages.
 - 2026-06-06: `login`, `chat`, and `goals` pages now use server-side auth checks.
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the auth shell implementation.
+- 2026-06-06: Task 2 started and the chat workspace shell was implemented with thread list, composer, and conversation panes.
+- 2026-06-06: Task 3 started and the chat workspace was wired to the BFF chat and thread APIs.
+- 2026-06-06: Thread deletion, optimistic message display, and assistant response rendering were added to the chat workspace.
+- 2026-06-06: `npm run typecheck` and `npm run build` both passed after the chat workspace implementation.
