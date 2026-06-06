@@ -1,0 +1,268 @@
+はい。Difyから使う前提なら、まずは **1つのEdge Functionに action を渡す方式** が扱いやすいです。Supabase Edge FunctionsはDeno/TypeScriptで書けるサーバーサイド関数なので、この用途に合います。([Supabase][1])
+
+## 推奨API案
+
+エンドポイントはまず1本。
+
+```text
+POST /functions/v1/planning-api
+```
+
+リクエスト例：
+
+```json
+{
+  "action": "list_goals",
+  "params": {
+    "status": "active"
+  }
+}
+```
+
+必須アクション：
+
+```text
+list_goals
+create_goal
+get_goal
+```
+
+初期版で追加したいアクション：
+
+```text
+update_goal
+list_subjects
+create_subject
+get_subject
+create_event
+list_events
+summarize_context
+```
+
+## 全体モデル
+
+```text
+Goal
+ └─ Subject
+     └─ Issue
+         └─ Task
+
+Event は Goal / Subject / Issue / Task に紐づく
+```
+
+Difyからは、まずこのくらいのツール定義にすると安定します。
+
+| action              | 目的          |
+| ------------------- | ----------- |
+| `list_goals`        | ゴール一覧取得     |
+| `create_goal`       | ゴール作成       |
+| `get_goal`          | ゴール詳細取得     |
+| `list_subjects`     | ゴール配下の主題一覧  |
+| `create_subject`    | 主題作成        |
+| `create_event`      | 会話・事象・判断を記録 |
+| `list_events`       | 関連イベント取得    |
+| `summarize_context` | 現状確認用の材料取得  |
+
+## Dify向けの基本設計
+
+Difyには「ツール」としてこう見せます。
+
+```json
+{
+  "action": "create_goal",
+  "params": {
+    "title": "Azure環境構築",
+    "description": "社内向け検証環境を構築する",
+    "status": "active"
+  }
+}
+```
+
+返却は必ず統一します。
+
+```json
+{
+  "ok": true,
+  "data": {},
+  "error": null
+}
+```
+
+エラー時：
+
+```json
+{
+  "ok": false,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "title is required"
+  }
+}
+```
+
+## Edge Functionの骨子
+
+```ts
+// supabase/functions/planning-api/index.ts
+
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const API_KEY = Deno.env.get("PLANNING_API_KEY")!;
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8"
+    }
+  });
+}
+
+serve(async (req) => {
+  try {
+    const auth = req.headers.get("authorization") ?? "";
+    const token = auth.replace(/^Bearer\s+/i, "");
+
+    if (token !== API_KEY) {
+      return json({
+        ok: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "Invalid API key" }
+      }, 401);
+    }
+
+    const body = await req.json();
+    const { action, params = {} } = body;
+
+    switch (action) {
+      case "list_goals":
+        return await listGoals(params);
+
+      case "create_goal":
+        return await createGoal(params);
+
+      case "get_goal":
+        return await getGoal(params);
+
+      default:
+        return json({
+          ok: false,
+          data: null,
+          error: { code: "UNKNOWN_ACTION", message: `Unknown action: ${action}` }
+        }, 400);
+    }
+  } catch (e) {
+    return json({
+      ok: false,
+      data: null,
+      error: { code: "INTERNAL_ERROR", message: String(e?.message ?? e) }
+    }, 500);
+  }
+});
+
+async function listGoals(params: any) {
+  let q = supabase
+    .from("goals")
+    .select("*")
+    .order("updated_at", { ascending: false });
+
+  if (params.status) {
+    q = q.eq("status", params.status);
+  }
+
+  const { data, error } = await q.limit(params.limit ?? 20);
+
+  if (error) throw error;
+
+  return json({ ok: true, data, error: null });
+}
+
+async function createGoal(params: any) {
+  if (!params.title) {
+    return json({
+      ok: false,
+      data: null,
+      error: { code: "VALIDATION_ERROR", message: "title is required" }
+    }, 400);
+  }
+
+  const { data, error } = await supabase
+    .from("goals")
+    .insert({
+      title: params.title,
+      description: params.description ?? null,
+      status: params.status ?? "active"
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return json({ ok: true, data, error: null });
+}
+
+async function getGoal(params: any) {
+  if (!params.id) {
+    return json({
+      ok: false,
+      data: null,
+      error: { code: "VALIDATION_ERROR", message: "id is required" }
+    }, 400);
+  }
+
+  const { data, error } = await supabase
+    .from("goals")
+    .select(`
+      *,
+      subjects(*),
+      events(*)
+    `)
+    .eq("id", params.id)
+    .single();
+
+  if (error) throw error;
+
+  return json({ ok: true, data, error: null });
+}
+```
+
+## 私なら次に足すもの
+
+次は `create_event` です。
+このアプリの肝はタスク登録ではなく、**事象をイベントとして蓄積すること**なので。
+
+```json
+{
+  "action": "create_event",
+  "params": {
+    "goal_id": "...",
+    "subject_id": "...",
+    "event_type": "conversation",
+    "title": "Difyとの会話で方針を確認",
+    "body": "GoalからSubjectを導き、Eventを蓄積する方針とした。",
+    "source": "dify"
+  }
+}
+```
+
+最初の実装順はこれが良いです。
+
+```text
+1. list_goals
+2. create_goal
+3. get_goal
+4. create_event
+5. list_events
+6. create_subject
+7. list_subjects
+```
+
+Dify側から見ると、「ゴールを選ぶ → 会話内容をイベントとして記録する → 現状を見る」がすぐ成立します。
+
+[1]: https://supabase.com/docs/guides/functions?utm_source=chatgpt.com "Edge Functions | Supabase Docs"

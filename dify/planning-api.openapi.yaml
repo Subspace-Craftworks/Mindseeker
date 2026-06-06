@@ -1,0 +1,147 @@
+openapi: 3.0.3
+info:
+  title: Planning API
+  version: 1.0.0
+  description: >
+    Supabase Edge Function for managing goals, subjects, issues, tasks, and events.
+    This API uses an action-based request body and a custom API key header for authentication.
+servers:
+  - url: https://bwyamrnvijnwzgljhwqo.supabase.co
+paths:
+  /functions/v1/planning-api:
+    post:
+      operationId: planningApi
+      summary: Execute a planning action
+      description: >
+        Call the Supabase Edge Function with an action and params object.
+        For Dify, use the X-Planning-Api-Key header instead of Authorization.
+      security:
+        - PlanningApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanningRequest'
+            examples:
+              listGoals:
+                summary: List active goals
+                value:
+                  action: list_goals
+                  params:
+                    status: active
+                    limit: 20
+              createGoal:
+                summary: Create a goal
+                value:
+                  action: create_goal
+                  params:
+                    title: Azure環境構築
+                    description: 社内向け検証環境を構築する
+                    status: active
+              createEvent:
+                summary: Create an event
+                value:
+                  action: create_event
+                  params:
+                    goal_id: 00000000-0000-0000-0000-000000000000
+                    event_type: conversation
+                    title: Difyとの会話で方針を確認
+                    body: GoalからSubjectを導き、Eventを蓄積する方針とした。
+                    source: dify
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation or unknown-action error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+components:
+  securitySchemes:
+    PlanningApiKey:
+      type: apiKey
+      in: header
+      name: X-Planning-Api-Key
+  schemas:
+    PlanningRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum:
+            - list_goals
+            - create_goal
+            - get_goal
+            - update_goal
+            - list_subjects
+            - create_subject
+            - get_subject
+            - update_subject
+            - list_issues
+            - create_issue
+            - update_issue
+            - list_tasks
+            - create_task
+            - update_task
+            - create_event
+            - list_events
+            - summarize_context
+          description: Action to execute.
+        params:
+          type: object
+          description: Action-specific parameters.
+          additionalProperties: true
+      additionalProperties: false
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          nullable: true
+      required:
+        - code
+        - message
+    ApiResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        data:
+          nullable: true
+        error:
+          oneOf:
+            - $ref: '#/components/schemas/ApiError'
+            - type: 'null'
+      required:
+        - ok
+        - data
+        - error

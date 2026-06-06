@@ -1,0 +1,64 @@
+-- 1. ゴール
+create table goals (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  status text not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 2. 主題・案件・テーマ
+create table subjects (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid references goals(id) on delete cascade,
+  title text not null,
+  description text,
+  status text not null default 'open',
+  priority text default 'normal',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 3. 課題・論点・懸念
+create table issues (
+  id uuid primary key default gen_random_uuid(),
+  subject_id uuid references subjects(id) on delete cascade,
+  title text not null,
+  description text,
+  status text not null default 'open',
+  severity text default 'medium',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 4. 行動・作業
+create table tasks (
+  id uuid primary key default gen_random_uuid(),
+  issue_id uuid references issues(id) on delete set null,
+  subject_id uuid references subjects(id) on delete cascade,
+  title text not null,
+  description text,
+  status text not null default 'todo',
+  due_date date,
+  assignee text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 5. イベントログ
+create table events (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid references goals(id) on delete set null,
+  subject_id uuid references subjects(id) on delete set null,
+  issue_id uuid references issues(id) on delete set null,
+  task_id uuid references tasks(id) on delete set null,
+
+  event_type text not null,
+  title text not null,
+  body text,
+  source text,
+  occurred_at timestamptz not null default now(),
+
+  created_at timestamptz not null default now()
+);
