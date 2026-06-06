@@ -8,7 +8,7 @@ async function signIn(provider: "google" | "github") {
   await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${window.location.origin}/chat`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
     },
   });
 }

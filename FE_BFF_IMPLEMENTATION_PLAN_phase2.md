@@ -132,3 +132,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: Task 3 started and the chat workspace was wired to the BFF chat and thread APIs.
 - 2026-06-06: Thread deletion, optimistic message display, and assistant response rendering were added to the chat workspace.
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the chat workspace implementation.
+- 2026-06-06: OAuth login redirect was corrected to use `/auth/callback?next=/chat` instead of redirecting directly to `/chat`.
+- 2026-06-06: An auth callback route was added to exchange the OAuth code for a session before redirecting into the app.
+- 2026-06-06: Login page now surfaces callback errors for easier diagnosis.
+- 2026-06-06: `npm run typecheck` and `npm run build` both passed after the login fix.
