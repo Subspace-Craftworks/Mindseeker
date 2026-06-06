@@ -48,7 +48,7 @@ function normalizeDifyResponse(text: string): DifyChatResult {
   for (const event of events) {
     const nextAnswer = event.answer;
     if (typeof nextAnswer === "string" && nextAnswer) {
-      answer = nextAnswer;
+      answer += nextAnswer;
     }
 
     if (!conversationId && typeof event.conversation_id === "string") {
@@ -70,7 +70,7 @@ function normalizeDifyResponse(text: string): DifyChatResult {
 
   return {
     conversation_id: conversationId,
-    answer,
+    answer: answer.trim(),
     message_id: messageId || undefined,
     task_id: taskId || undefined,
     event: eventName || undefined,
