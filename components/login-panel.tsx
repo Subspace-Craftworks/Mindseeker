@@ -5,7 +5,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 async function signIn(provider: "google" | "github") {
   const supabase = createBrowserSupabaseClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
@@ -15,12 +15,6 @@ async function signIn(provider: "google" | "github") {
   if (error) {
     throw error;
   }
-
-  if (!data?.url) {
-    throw new Error("Missing OAuth redirect URL");
-  }
-
-  window.location.assign(data.url);
 }
 
 export function LoginPanel() {
@@ -32,7 +26,6 @@ export function LoginPanel() {
     setError(null);
     try {
       await signIn(provider);
-      setError("Redirect did not start. Please try again.");
     } catch (signInError) {
       setError(signInError instanceof Error ? signInError.message : "Login failed");
     } finally {
