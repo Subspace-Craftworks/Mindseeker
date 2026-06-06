@@ -19,8 +19,24 @@ This file tracks the first implementation wave for the Supabase Auth + Vercel FE
 
 ## Current status
 
-- Scaffold: in progress
-- Auth: in progress
-- BFF auth commonization: in progress
-- `chat_threads`: in progress
+- Scaffold: completed
+- Auth: completed
+- BFF auth commonization: completed
+- `chat_threads`: completed
 
+## Completion log
+
+- 2026-06-06: Project scaffold created for the Next.js FE/BFF app.
+- 2026-06-06: Supabase Auth entry points and shared browser/server helpers were added.
+- 2026-06-06: BFF auth commonization was implemented with shared auth and API helper modules.
+- 2026-06-06: `chat_threads` migration was added to Supabase.
+- 2026-06-06: `user_id` and RLS migration was added for the core tables.
+- 2026-06-06: Goal API routes were added to the BFF.
+- 2026-06-06: Local validation passed with `npm run typecheck` and `npm run build`.
+- 2026-06-06: GitHub repository `tom-kido/Mindseeker` was created and pushed.
+- 2026-06-06: Vercel deployment was completed for the project.
+
+## Notes
+
+- The initial four-item scope in this file is complete.
+- Additional implementation work continued after the first wave, including goal routes, RLS, GitHub setup, and Vercel deployment.
