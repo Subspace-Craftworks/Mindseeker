@@ -138,3 +138,5 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the login fix.
 - 2026-06-06: Login panel now explicitly reads the OAuth redirect URL and performs `window.location.assign(...)` for clearer navigation behavior.
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the login panel fallback fix.
+- 2026-06-06: Browser-side Supabase client was changed to use direct `NEXT_PUBLIC_*` references instead of dynamic env lookup so Next.js can inline them correctly.
+- 2026-06-06: `npm run typecheck` and `npm run build` both passed after the browser env fix.
