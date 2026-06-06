@@ -1,6 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/supabase/server";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const user = await getCurrentUser();
+  if (user) {
+    redirect("/chat");
+  }
+
   return (
     <main style={{ padding: 32, maxWidth: 960, margin: "0 auto" }}>
       <h1 style={{ fontSize: 40, marginBottom: 12 }}>Mindseeker</h1>
@@ -15,4 +24,3 @@ export default function HomePage() {
     </main>
   );
 }
-

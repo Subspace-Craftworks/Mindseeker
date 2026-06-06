@@ -8,6 +8,17 @@ function applyCookies(source: NextResponse, target: NextResponse) {
   });
 }
 
+function syncCookies(
+  request: NextRequest,
+  response: NextResponse,
+  cookiesToSet: Array<{ name: string; value: string; options: Parameters<typeof response.cookies.set>[2] }>
+) {
+  cookiesToSet.forEach(({ name, value, options }) => {
+    request.cookies.set(name, value);
+    response.cookies.set(name, value, options);
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
     request: {
@@ -21,9 +32,7 @@ export async function middleware(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
+        syncCookies(request, response, cookiesToSet);
       },
     },
   });
