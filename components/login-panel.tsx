@@ -5,21 +5,36 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 async function signIn(provider: "google" | "github") {
   const supabase = createBrowserSupabaseClient();
-  await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
     },
   });
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.url) {
+    throw new Error("Missing OAuth redirect URL");
+  }
+
+  window.location.assign(data.url);
 }
 
 export function LoginPanel() {
   const [loading, setLoading] = useState<"google" | "github" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn(provider: "google" | "github") {
     setLoading(provider);
+    setError(null);
     try {
       await signIn(provider);
+      setError("Redirect did not start. Please try again.");
+    } catch (signInError) {
+      setError(signInError instanceof Error ? signInError.message : "Login failed");
     } finally {
       setLoading(null);
     }
@@ -27,6 +42,20 @@ export function LoginPanel() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {error ? (
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(140, 75, 45, 0.24)",
+            background: "rgba(140, 75, 45, 0.08)",
+            color: "var(--accent-2)",
+            lineHeight: 1.6,
+          }}
+        >
+          {error}
+        </div>
+      ) : null}
       <button
         type="button"
         onClick={() => handleSignIn("google")}
