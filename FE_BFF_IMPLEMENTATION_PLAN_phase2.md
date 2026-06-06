@@ -72,6 +72,47 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 4. Goals UI
 5. Polish and verification
 
+## Immediate Next Tasks
+
+### Task 1: Auth shell and route protection
+
+- Add a shared app shell for authenticated pages.
+- Redirect unauthenticated users to `/login`.
+- Redirect authenticated users away from `/login` when already signed in.
+- Add sign-out in the app shell or header.
+- Verify OAuth callback lands in the authenticated area.
+
+### Task 2: Chat UI skeleton
+
+- Replace the placeholder chat page with a usable layout.
+- Add the left-side thread list area.
+- Add the main conversation area.
+- Add the message composer at the bottom.
+- Wire the page to the BFF chat route without final styling polish.
+
+### Task 3: Basic chat data flow
+
+- Fetch thread list from the BFF.
+- Create or reuse an active thread.
+- Send a message through the BFF.
+- Render assistant responses in the conversation area.
+- Confirm the Dify roundtrip works end to end.
+
+### Task 4: Goals page basics
+
+- Replace the placeholder goals page with a list view.
+- Fetch goals from the BFF.
+- Add goal selection and a simple detail panel.
+- Keep the first version read-only if needed.
+
+### Task 5: Verification and cleanup
+
+- Run `npm run typecheck`.
+- Run `npm run build`.
+- Test the auth flow in the browser.
+- Test one chat exchange in production or preview.
+- Clean up any temporary UI scaffolding.
+
 ## Notes
 
 - Phase 1 is already complete and provides the foundation for this work.
@@ -79,3 +120,11 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - Dify should remain behind the BFF boundary.
 - Keep future Supabase key migration concerns documented but out of the critical path.
 
+## Progress Log
+
+- 2026-06-06: Task 1 started and the auth shell / route protection foundation was implemented.
+- 2026-06-06: `@supabase/ssr` was added to support server-side session handling and middleware auth checks.
+- 2026-06-06: `middleware.ts` was added to protect `/chat` and `/goals`, and to redirect authenticated users away from `/login`.
+- 2026-06-06: Shared app shell UI with sign-out was added for authenticated pages.
+- 2026-06-06: `login`, `chat`, and `goals` pages now use server-side auth checks.
+- 2026-06-06: `npm run typecheck` and `npm run build` both passed after the auth shell implementation.
