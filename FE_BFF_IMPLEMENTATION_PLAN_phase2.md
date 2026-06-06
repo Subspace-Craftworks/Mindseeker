@@ -140,3 +140,5 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the login panel fallback fix.
 - 2026-06-06: Browser-side Supabase client was changed to use direct `NEXT_PUBLIC_*` references instead of dynamic env lookup so Next.js can inline them correctly.
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the browser env fix.
+- 2026-06-06: OAuth callback route was updated to write the session cookies into the redirect response before forwarding to `/chat`.
+- 2026-06-06: `npm run typecheck` and `npm run build` both passed after the callback cookie fix.
