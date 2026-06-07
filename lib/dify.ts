@@ -36,6 +36,19 @@ export type ChatHistoryMessage = {
   createdAt: string;
 };
 
+function compareHistoryMessages(left: ChatHistoryMessage, right: ChatHistoryMessage) {
+  const timeDelta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+  if (timeDelta !== 0) {
+    return timeDelta;
+  }
+
+  if (left.role === right.role) {
+    return left.id.localeCompare(right.id);
+  }
+
+  return left.role === "user" ? -1 : 1;
+}
+
 function extractSseEvents(text: string) {
   return text
     .split(/\r?\n\r?\n/)
@@ -195,6 +208,8 @@ export async function listConversationMessages(input: ConversationHistoryRequest
       });
     }
   }
+
+  messages.sort(compareHistoryMessages);
 
   return {
     messages,
