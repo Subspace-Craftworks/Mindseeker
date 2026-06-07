@@ -36,6 +36,7 @@ paths:
                 value:
                   action: create_goal
                   params:
+                    user_id: 678ea7b6-e79e-4f2c-ae35-4af35b650071
                     title: Azure環境構築
                     description: 社内向け検証環境を構築する
                     status: active
@@ -44,6 +45,7 @@ paths:
                 value:
                   action: create_event
                   params:
+                    user_id: 678ea7b6-e79e-4f2c-ae35-4af35b650071
                     goal_id: 00000000-0000-0000-0000-000000000000
                     event_type: conversation
                     title: Difyとの会話で方針を確認

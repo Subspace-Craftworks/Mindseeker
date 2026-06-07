@@ -133,11 +133,14 @@ async function listGoals(supabase: ReturnType<typeof getSupabaseClient>, params:
 
 async function createGoal(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
   const title = cleanString(params.title);
+  const userId = cleanString(params.user_id);
   if (!title) return fail("VALIDATION_ERROR", "title is required", 400);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
 
   const { data, error } = await supabase
     .from("goals")
     .insert({
+      user_id: userId,
       title,
       description: cleanString(params.description),
       status: cleanString(params.status) ?? "active",
@@ -194,12 +197,15 @@ async function listSubjects(supabase: ReturnType<typeof getSupabaseClient>, para
 async function createSubject(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
   const goalId = cleanString(params.goal_id);
   const title = cleanString(params.title);
+  const userId = cleanString(params.user_id);
   if (!goalId) return fail("VALIDATION_ERROR", "goal_id is required", 400);
   if (!title) return fail("VALIDATION_ERROR", "title is required", 400);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
 
   const { data, error } = await supabase
     .from("subjects")
     .insert({
+      user_id: userId,
       goal_id: goalId,
       title,
       description: cleanString(params.description),
@@ -269,12 +275,15 @@ async function listIssues(supabase: ReturnType<typeof getSupabaseClient>, params
 async function createIssue(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
   const subjectId = cleanString(params.subject_id);
   const title = cleanString(params.title);
+  const userId = cleanString(params.user_id);
   if (!subjectId) return fail("VALIDATION_ERROR", "subject_id is required", 400);
   if (!title) return fail("VALIDATION_ERROR", "title is required", 400);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
 
   const { data, error } = await supabase
     .from("issues")
     .insert({
+      user_id: userId,
       subject_id: subjectId,
       title,
       description: cleanString(params.description),
@@ -344,12 +353,15 @@ async function listTasks(supabase: ReturnType<typeof getSupabaseClient>, params:
 async function createTask(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
   const subjectId = cleanString(params.subject_id);
   const title = cleanString(params.title);
+  const userId = cleanString(params.user_id);
   if (!subjectId) return fail("VALIDATION_ERROR", "subject_id is required", 400);
   if (!title) return fail("VALIDATION_ERROR", "title is required", 400);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
 
   const { data, error } = await supabase
     .from("tasks")
     .insert({
+      user_id: userId,
       issue_id: cleanString(params.issue_id),
       subject_id: subjectId,
       title,
@@ -405,8 +417,10 @@ async function updateTask(supabase: ReturnType<typeof getSupabaseClient>, params
 async function createEvent(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
   const eventType = cleanString(params.event_type);
   const title = cleanString(params.title);
+  const userId = cleanString(params.user_id);
   if (!eventType) return fail("VALIDATION_ERROR", "event_type is required", 400);
   if (!title) return fail("VALIDATION_ERROR", "title is required", 400);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
 
   const occurredAt = cleanString(params.occurred_at);
   if (occurredAt && Number.isNaN(Date.parse(occurredAt))) {
@@ -416,6 +430,7 @@ async function createEvent(supabase: ReturnType<typeof getSupabaseClient>, param
   const { data, error } = await supabase
     .from("events")
     .insert({
+      user_id: userId,
       goal_id: cleanString(params.goal_id),
       subject_id: cleanString(params.subject_id),
       issue_id: cleanString(params.issue_id),

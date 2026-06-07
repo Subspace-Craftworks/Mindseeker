@@ -32,6 +32,7 @@ This document is the source-aligned parameter reference for `supabase/functions/
 ### `create_goal`
 
 - Required:
+  - `user_id`
   - `title`
 - Optional:
   - `description`
@@ -63,6 +64,7 @@ This document is the source-aligned parameter reference for `supabase/functions/
 ### `create_subject`
 
 - Required:
+  - `user_id`
   - `goal_id`
   - `title`
 - Optional:
@@ -99,6 +101,7 @@ This document is the source-aligned parameter reference for `supabase/functions/
 ### `create_issue`
 
 - Required:
+  - `user_id`
   - `subject_id`
   - `title`
 - Optional:
@@ -130,6 +133,7 @@ This document is the source-aligned parameter reference for `supabase/functions/
 ### `create_task`
 
 - Required:
+  - `user_id`
   - `subject_id`
   - `title`
 - Optional:
@@ -155,6 +159,7 @@ This document is the source-aligned parameter reference for `supabase/functions/
 ### `create_event`
 
 - Required:
+  - `user_id`
   - `event_type`
   - `title`
 - Optional:
@@ -211,6 +216,7 @@ Do not send a generic `id` field.
 ## Recommended Dify mapping
 
 - Use `X-Planning-Api-Key` as the auth header.
+- When creating or logging records, pass the Mindseeker application `user_id` input variable as `user_id`.
 - When updating the active conversation focus, pass `sys.conversation_id` as `conversation_id` and the selected goal's `goal_id`.
 - Send the body as:
 
