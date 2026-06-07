@@ -6,6 +6,7 @@ export type ChatThreadRecord = {
   dify_conversation_id: string;
   title: string | null;
   app_key: string;
+  current_goal_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -15,6 +16,7 @@ type UpsertChatThreadInput = {
   conversationId: string;
   title?: string | null;
   appKey?: string;
+  currentGoalId?: string | null;
 };
 
 export async function listChatThreads(userId: string) {
@@ -50,20 +52,23 @@ export async function getChatThread(userId: string, threadId: string) {
 
 export async function upsertChatThread(input: UpsertChatThreadInput) {
   const supabase = createSupabaseServiceClient();
+  const record: Record<string, unknown> = {
+    user_id: input.userId,
+    dify_conversation_id: input.conversationId,
+    title: input.title ?? null,
+    app_key: input.appKey ?? "mindseeker",
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.currentGoalId !== undefined) {
+    record.current_goal_id = input.currentGoalId;
+  }
+
   const { data, error } = await supabase
     .from("chat_threads")
-    .upsert(
-      {
-        user_id: input.userId,
-        dify_conversation_id: input.conversationId,
-        title: input.title ?? null,
-        app_key: input.appKey ?? "mindseeker",
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id,dify_conversation_id",
-      },
-    )
+    .upsert(record, {
+      onConflict: "user_id,dify_conversation_id",
+    })
     .select("*")
     .single();
 
@@ -80,4 +85,39 @@ export async function deleteChatThread(userId: string, threadId: string) {
   if (error) {
     throw error;
   }
+}
+
+export async function updateChatThreadCurrentGoal(input: {
+  userId?: string;
+  conversationId?: string;
+  threadId?: string;
+  currentGoalId: string | null;
+}) {
+  const supabase = createSupabaseServiceClient();
+  let query = supabase.from("chat_threads").update({
+    current_goal_id: input.currentGoalId,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (input.threadId) {
+    query = query.eq("id", input.threadId);
+  } else if (input.conversationId) {
+    query = query.eq("dify_conversation_id", input.conversationId);
+  } else {
+    throw new Error("threadId or conversationId is required");
+  }
+
+  if (input.userId) {
+    query = query.eq("user_id", input.userId);
+  }
+
+  const { data, error } = await query.select("*").maybeSingle();
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    return null;
+  }
+
+  return data as ChatThreadRecord;
 }

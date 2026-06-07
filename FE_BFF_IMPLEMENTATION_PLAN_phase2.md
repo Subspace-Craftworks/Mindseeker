@@ -145,6 +145,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-07: Streaming chat output was wired from the BFF into the FE so assistant replies render incrementally.
 - 2026-06-07: The Goals workspace was connected to the authenticated `/goals` page, giving the app a read-only list/detail surface for goals, subjects, issues, tasks, and events.
 - 2026-06-07: New chat conversations now load the Dify opening statement through the BFF and show it in the empty draft thread.
+- 2026-06-07: `chat_threads.current_goal_id` was added and the chat sidebar context map now follows the active thread's focused Goal.
 
 ## Work Memo
 
@@ -160,6 +161,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - Streaming chat responses are rendered incrementally in the FE.
 - The Goals workspace is now connected to the `/goals` page with a read-only list/detail view.
 - New chat conversations now show the Dify opening statement from the BFF.
+- The chat sidebar context map can now follow the active thread's current Goal.
 - Production deployment is live and working.
 
 ### Remaining

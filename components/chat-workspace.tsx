@@ -12,6 +12,7 @@ type ChatThread = {
   dify_conversation_id: string;
   title: string | null;
   app_key: string;
+  current_goal_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -55,6 +56,15 @@ type OpeningStatementResponse = {
 };
 
 type ContextMap = {
+  currentGoalId: string | null;
+  goal: {
+    id: string;
+    title: string;
+    subjects: { title: string }[];
+    issues: { title: string }[];
+    tasks: { title: string }[];
+    events: { title: string }[];
+  } | null;
   goals: {
     id: string;
     title: string;
@@ -299,16 +309,37 @@ function ContextLine({ label, items }: { label: string; items: string[] }) {
 
 function ContextGoalBlock({
   goal,
+  selected,
 }: {
   goal: ContextMap["goals"][number];
+  selected?: boolean;
 }) {
   return (
-    <div style={{ display: "grid", gap: 8, paddingBottom: 12, borderBottom: "1px solid rgba(23, 33, 43, 0.08)" }}>
+    <div
+      style={{
+        display: "grid",
+        gap: 8,
+        paddingBottom: 12,
+        borderBottom: "1px solid rgba(23, 33, 43, 0.08)",
+        opacity: selected ? 1 : 0.92,
+      }}
+    >
       <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.04 }}>
         Goal:
       </div>
       <div style={{ display: "grid", gap: 10, paddingLeft: 8 }}>
-        <div style={{ fontSize: 13, lineHeight: 1.5, fontWeight: 600 }}>・{goal.title}</div>
+        <div
+          style={{
+            fontSize: 13,
+            lineHeight: 1.5,
+            fontWeight: 600,
+            padding: selected ? "4px 8px" : 0,
+            borderRadius: 10,
+            background: selected ? "rgba(15, 118, 110, 0.08)" : "transparent",
+          }}
+        >
+          ・{goal.title}
+        </div>
         <div style={{ display: "grid", gap: 8, paddingLeft: 10 }}>
           <ContextLine label="Subject" items={goal.subjects.map((item) => item.title)} />
           <ContextLine label="Issue" items={goal.issues.map((item) => item.title)} />
@@ -459,7 +490,12 @@ export function ChatWorkspace() {
 
     async function loadContextMap() {
       try {
-        const response = await fetch("/api/context-map", {
+        const params = new URLSearchParams();
+        if (activeThreadId) {
+          params.set("thread_id", activeThreadId);
+        }
+
+        const response = await fetch(`/api/context-map${params.toString() ? `?${params.toString()}` : ""}`, {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
@@ -478,6 +514,8 @@ export function ChatWorkspace() {
       } catch (loadError) {
         if (!cancelled) {
           setContextMap({
+            currentGoalId: null,
+            goal: null,
             goals: [],
           });
           setError(loadError instanceof Error ? loadError.message : "Failed to load context map");
@@ -490,7 +528,7 @@ export function ChatWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken]);
+  }, [activeThreadId, sessionToken]);
 
   const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : messagesByThread.draft ?? [];
 
@@ -614,12 +652,18 @@ export function ChatWorkspace() {
     return null;
   }
 
-  async function refreshContextMap() {
+  async function refreshContextMap(threadId?: string | null) {
     if (!sessionToken) {
       return;
     }
 
-    const response = await fetch("/api/context-map", {
+    const params = new URLSearchParams();
+    const effectiveThreadId = threadId ?? activeThreadId;
+    if (effectiveThreadId) {
+      params.set("thread_id", effectiveThreadId);
+    }
+
+    const response = await fetch(`/api/context-map${params.toString() ? `?${params.toString()}` : ""}`, {
       headers: {
         Authorization: `Bearer ${sessionToken}`,
       },
@@ -737,7 +781,7 @@ export function ChatWorkspace() {
         });
 
         const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
-        await refreshContextMap();
+        await refreshContextMap(nextThreadId ?? activeThreadId);
         if (threadKey === "draft" && nextThreadId) {
           setMessagesByThread((current) => {
             const draftMessages = current.draft ?? [];
@@ -770,7 +814,7 @@ export function ChatWorkspace() {
       }
 
       const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
-      await refreshContextMap();
+      await refreshContextMap(nextThreadId ?? activeThreadId);
       if (threadKey === "draft" && nextThreadId) {
         setMessagesByThread((current) => {
           const draftMessages = current.draft ?? [];
@@ -829,6 +873,7 @@ export function ChatWorkspace() {
     setActiveThreadId(null);
     setError(null);
     seedOpeningStatement();
+    void refreshContextMap(null).catch(() => undefined);
   }
 
   return (
@@ -865,10 +910,14 @@ export function ChatWorkspace() {
           </div>
           {contextMap ? (
             <div style={{ display: "grid", gap: 12, maxHeight: 240, overflow: "auto", paddingRight: 4 }}>
-              {contextMap.goals.length === 0 ? (
+              {contextMap.goal ? (
+                <ContextGoalBlock goal={contextMap.goal} selected />
+              ) : contextMap.goals.length === 0 ? (
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>-</div>
               ) : (
-                contextMap.goals.map((goal) => <ContextGoalBlock key={goal.id} goal={goal} />)
+                contextMap.goals.map((goal) => (
+                  <ContextGoalBlock key={goal.id} goal={goal} selected={contextMap.currentGoalId === goal.id} />
+                ))
               )}
             </div>
           ) : (

@@ -648,6 +648,37 @@ async function summarizeContext(supabase: ReturnType<typeof getSupabaseClient>, 
   });
 }
 
+async function setCurrentGoal(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
+  const conversationId = cleanString(params.conversation_id);
+  if (!conversationId) return fail("VALIDATION_ERROR", "conversation_id is required", 400);
+
+  const goalIdRaw = params.goal_id;
+  const goalId = cleanString(goalIdRaw);
+
+  if (goalId) {
+    const goalResult = await supabase.from("goals").select("id").eq("id", goalId).maybeSingle();
+    if (goalResult.error) throw goalResult.error;
+    if (!goalResult.data) return fail("NOT_FOUND", "Goal not found", 404);
+  } else if (goalIdRaw !== undefined && goalIdRaw !== null && String(goalIdRaw).trim().length > 0 && !goalId) {
+    return fail("VALIDATION_ERROR", "goal_id must be a valid string or omitted", 400);
+  }
+
+  const { data, error } = await supabase
+    .from("chat_threads")
+    .update({
+      current_goal_id: goalId || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("dify_conversation_id", conversationId)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return fail("NOT_FOUND", "Chat thread not found", 404);
+
+  return success(data);
+}
+
 const ACTIONS = new Map<string, (supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) => Promise<Response>>([
   ["list_goals", listGoals],
   ["create_goal", createGoal],
@@ -666,6 +697,7 @@ const ACTIONS = new Map<string, (supabase: ReturnType<typeof getSupabaseClient>,
   ["create_event", createEvent],
   ["list_events", listEvents],
   ["summarize_context", summarizeContext],
+  ["set_current_goal", setCurrentGoal],
 ]);
 
 serve(async (req) => {

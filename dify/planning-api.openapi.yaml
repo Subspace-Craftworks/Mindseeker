@@ -49,6 +49,13 @@ paths:
                     title: Difyとの会話で方針を確認
                     body: GoalからSubjectを導き、Eventを蓄積する方針とした。
                     source: dify
+              setCurrentGoal:
+                summary: Set the current goal for the active chat conversation
+                value:
+                  action: set_current_goal
+                  params:
+                    conversation_id: 00000000-0000-0000-0000-000000000000
+                    goal_id: 00000000-0000-0000-0000-000000000000
       responses:
         '200':
           description: Successful response
@@ -112,6 +119,7 @@ components:
             - create_event
             - list_events
             - summarize_context
+            - set_current_goal
           description: Action to execute.
         params:
           type: object

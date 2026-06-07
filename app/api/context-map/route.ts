@@ -5,7 +5,8 @@ import { getContextMap } from "@/lib/context-map";
 export async function GET(req: NextRequest) {
   try {
     const { user } = await requireSupabaseUser(req);
-    const contextMap = await getContextMap(user.id);
+    const threadId = req.nextUrl.searchParams.get("thread_id");
+    const contextMap = await getContextMap(user.id, threadId);
     return NextResponse.json({ ok: true, data: contextMap, error: null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

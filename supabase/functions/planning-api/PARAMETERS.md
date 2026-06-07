@@ -187,6 +187,16 @@ This document is the source-aligned parameter reference for `supabase/functions/
 - Optional:
   - none
 
+### `set_current_goal`
+
+- Required:
+  - `conversation_id`
+- Optional:
+  - `goal_id`
+- Behavior:
+  - Updates `chat_threads.current_goal_id` for the row matched by `dify_conversation_id`
+  - Omit `goal_id` or pass an empty value to clear the current goal
+
 ## Canonical identifier fields
 
 Use these names consistently in Dify:
@@ -201,6 +211,7 @@ Do not send a generic `id` field.
 ## Recommended Dify mapping
 
 - Use `X-Planning-Api-Key` as the auth header.
+- When updating the active conversation focus, pass `sys.conversation_id` as `conversation_id` and the selected goal's `goal_id`.
 - Send the body as:
 
 ```json
