@@ -21,6 +21,11 @@ type DifyChatResult = {
   raw: unknown[];
 };
 
+export type DifyAppParameters = {
+  opening_statement?: string;
+  suggested_questions?: string[];
+};
+
 type DifyConversationMessage = {
   id?: string;
   conversation_id?: string;
@@ -215,4 +220,22 @@ export async function listConversationMessages(input: ConversationHistoryRequest
     messages,
     raw: payload,
   };
+}
+
+export async function getAppParameters() {
+  const response = await fetch(`${getDifyApiBaseUrl()}/parameters`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getDifyApiKey()}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Dify get parameters failed: ${response.status}${errorText ? ` - ${errorText.slice(0, 500)}` : ""}`);
+  }
+
+  const payload = (await response.json()) as DifyAppParameters;
+  return payload;
 }

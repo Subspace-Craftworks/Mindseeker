@@ -46,6 +46,14 @@ type ChatThreadHistoryResponse = {
   error: { code: string; message: string } | null;
 };
 
+type OpeningStatementResponse = {
+  ok: boolean;
+  data: {
+    openingStatement: string;
+  };
+  error: { code: string; message: string } | null;
+};
+
 type ContextMap = {
   goals: {
     id: string;
@@ -316,6 +324,7 @@ export function ChatWorkspace() {
   const router = useRouter();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [contextMap, setContextMap] = useState<ContextMap | null>(null);
+  const [openingStatement, setOpeningStatement] = useState<string>("");
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messagesByThread, setMessagesByThread] = useState<Record<string, ChatMessage[]>>({});
@@ -409,6 +418,45 @@ export function ChatWorkspace() {
 
     let cancelled = false;
 
+    async function loadOpeningStatement() {
+      try {
+        const response = await fetch("/api/chat/opening-statement", {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        const payload = (await response.json()) as OpeningStatementResponse;
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error?.message ?? `Failed to load opening statement (${response.status})`);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setOpeningStatement(payload.data.openingStatement);
+      } catch {
+        if (!cancelled) {
+          setOpeningStatement("");
+        }
+      }
+    }
+
+    void loadOpeningStatement();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken) {
+      return;
+    }
+
+    let cancelled = false;
+
     async function loadContextMap() {
       try {
         const response = await fetch("/api/context-map", {
@@ -445,6 +493,37 @@ export function ChatWorkspace() {
   }, [sessionToken]);
 
   const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : messagesByThread.draft ?? [];
+
+  useEffect(() => {
+    if (sessionToken && activeThreadId === null) {
+      seedOpeningStatement();
+    }
+  }, [activeThreadId, openingStatement, sessionToken]);
+
+  function seedOpeningStatement() {
+    if (!openingStatement.trim()) {
+      return;
+    }
+
+    const opener: ChatMessage = {
+      id: "opening-statement",
+      role: "assistant",
+      content: openingStatement.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessagesByThread((current) => {
+      const draftMessages = current.draft ?? [];
+      if (draftMessages.length > 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        draft: [opener],
+      };
+    });
+  }
 
   useEffect(() => {
     if (!sessionToken || !activeThreadId) {
@@ -749,6 +828,7 @@ export function ChatWorkspace() {
   function startNewThread() {
     setActiveThreadId(null);
     setError(null);
+    seedOpeningStatement();
   }
 
   return (

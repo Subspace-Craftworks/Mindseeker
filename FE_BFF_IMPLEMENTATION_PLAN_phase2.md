@@ -144,6 +144,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the callback cookie fix.
 - 2026-06-07: Streaming chat output was wired from the BFF into the FE so assistant replies render incrementally.
 - 2026-06-07: The Goals workspace was connected to the authenticated `/goals` page, giving the app a read-only list/detail surface for goals, subjects, issues, tasks, and events.
+- 2026-06-07: New chat conversations now load the Dify opening statement through the BFF and show it in the empty draft thread.
 
 ## Work Memo
 
@@ -158,6 +159,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - Thread selection now loads the selected conversation history from the BFF.
 - Streaming chat responses are rendered incrementally in the FE.
 - The Goals workspace is now connected to the `/goals` page with a read-only list/detail view.
+- New chat conversations now show the Dify opening statement from the BFF.
 - Production deployment is live and working.
 
 ### Remaining
