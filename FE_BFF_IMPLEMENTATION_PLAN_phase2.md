@@ -142,3 +142,23 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the browser env fix.
 - 2026-06-06: OAuth callback route was updated to write the session cookies into the redirect response before forwarding to `/chat`.
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the callback cookie fix.
+
+## Work Memo
+
+### Completed
+
+- Auth shell and route protection are in place.
+- OAuth login and callback flow work end to end.
+- The browser Supabase client is wired for SSR-compatible session handling.
+- The chat workspace is implemented with a thread list, composer, and message area.
+- Dify chat requests are wired through the BFF and the reply text is rendered in the chat UI.
+- Thread deletion is available from the chat workspace.
+- Thread selection now loads the selected conversation history from the BFF.
+- Production deployment is live and working.
+
+### Remaining
+
+- Streaming-style response rendering in the FE.
+- Goals page basics and goal detail UX.
+- Verification and cleanup for the final phase2 pass.
+- Optional polish for thread title refresh behavior and loading/error states.

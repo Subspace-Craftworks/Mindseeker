@@ -35,6 +35,17 @@ type ChatMessageResponse = {
   error: { code: string; message: string } | null;
 };
 
+type ChatThreadHistoryResponse = {
+  ok: boolean;
+  data:
+    | {
+        thread: ChatThread;
+        messages: ChatMessage[];
+      }
+    | null;
+  error: { code: string; message: string } | null;
+};
+
 function extractConversationId(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -166,6 +177,7 @@ export function ChatWorkspace() {
   const [messagesByThread, setMessagesByThread] = useState<Record<string, ChatMessage[]>>({});
   const [draft, setDraft] = useState("");
   const [loadingThreads, setLoadingThreads] = useState(true);
+  const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -247,6 +259,66 @@ export function ChatWorkspace() {
   }, [sessionToken]);
 
   const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : [];
+
+  useEffect(() => {
+    if (!sessionToken || !activeThreadId) {
+      return;
+    }
+
+    const threadId = activeThreadId;
+
+    if (Object.prototype.hasOwnProperty.call(messagesByThread, threadId)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadThreadMessages() {
+      setLoadingThreadId(threadId);
+      setError(null);
+      try {
+        const response = await fetch(`/api/chat/threads/${threadId}`, {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        const payload = (await response.json()) as ChatThreadHistoryResponse;
+        const history = payload.data;
+        if (!response.ok || !payload.ok || !history) {
+          throw new Error(payload.error?.message ?? `Failed to load conversation (${response.status})`);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setMessagesByThread((current) => ({
+          ...current,
+          [threadId]: history.messages,
+        }));
+        setThreads((current) =>
+          current.map((thread) =>
+            thread.id === history.thread.id ? { ...history.thread } : thread,
+          ),
+        );
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "Failed to load conversation");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingThreadId((current) => (current === threadId ? null : current));
+        }
+      }
+    }
+
+    void loadThreadMessages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeThreadId, messagesByThread, sessionToken]);
 
   async function refreshThreads(nextConversationId?: string) {
     if (!sessionToken) {
@@ -518,6 +590,9 @@ export function ChatWorkspace() {
               </div>
             </div>
           </div>
+          {loadingThreadId === activeThreadId ? (
+            <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading conversation...</div>
+          ) : null}
           {error ? (
             <div
               style={{

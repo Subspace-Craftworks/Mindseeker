@@ -6,6 +6,12 @@ type ChatRequest = {
   conversationId?: string | null;
 };
 
+type ConversationHistoryRequest = {
+  conversationId: string;
+  userId: string;
+  limit?: number;
+};
+
 type DifyChatResult = {
   conversation_id: string;
   answer: string;
@@ -13,6 +19,21 @@ type DifyChatResult = {
   task_id?: string;
   event?: string;
   raw: unknown[];
+};
+
+type DifyConversationMessage = {
+  id?: string;
+  conversation_id?: string;
+  query?: string;
+  answer?: string;
+  created_at?: number;
+};
+
+export type ChatHistoryMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
 };
 
 function extractSseEvents(text: string) {
@@ -126,4 +147,57 @@ export async function deleteConversation(input: { conversationId: string; userId
   }
 
   return true;
+}
+
+export async function listConversationMessages(input: ConversationHistoryRequest) {
+  const params = new URLSearchParams({
+    conversation_id: input.conversationId,
+    user: input.userId,
+    limit: String(input.limit ?? 100),
+  });
+
+  const response = await fetch(`${getDifyApiBaseUrl()}/messages?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getDifyApiKey()}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Dify list messages failed: ${response.status}${errorText ? ` - ${errorText.slice(0, 500)}` : ""}`);
+  }
+
+  const payload = (await response.json()) as { data?: DifyConversationMessage[] };
+  const data = Array.isArray(payload.data) ? payload.data : [];
+
+  const messages: ChatHistoryMessage[] = [];
+  for (const item of [...data].reverse()) {
+    const createdAt = item.created_at ? new Date(item.created_at * 1000).toISOString() : new Date().toISOString();
+    const baseId = item.id ?? `${item.conversation_id ?? input.conversationId}-${createdAt}`;
+
+    if (typeof item.query === "string" && item.query.trim()) {
+      messages.push({
+        id: `${baseId}-user`,
+        role: "user",
+        content: item.query,
+        createdAt,
+      });
+    }
+
+    if (typeof item.answer === "string" && item.answer.trim()) {
+      messages.push({
+        id: `${baseId}-assistant`,
+        role: "assistant",
+        content: item.answer,
+        createdAt,
+      });
+    }
+  }
+
+  return {
+    messages,
+    raw: payload,
+  };
 }
