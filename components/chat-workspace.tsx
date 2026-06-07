@@ -47,11 +47,14 @@ type ChatThreadHistoryResponse = {
 };
 
 type ContextMap = {
-  goals: string[];
-  subjects: string[];
-  issues: string[];
-  tasks: string[];
-  events: string[];
+  goals: {
+    id: string;
+    title: string;
+    subjects: { title: string }[];
+    issues: { title: string }[];
+    tasks: { title: string }[];
+    events: { title: string }[];
+  }[];
 };
 
 type ContextMapResponse = {
@@ -286,6 +289,29 @@ function ContextLine({ label, items }: { label: string; items: string[] }) {
   );
 }
 
+function ContextGoalBlock({
+  goal,
+}: {
+  goal: ContextMap["goals"][number];
+}) {
+  return (
+    <div style={{ display: "grid", gap: 8, paddingBottom: 12, borderBottom: "1px solid rgba(23, 33, 43, 0.08)" }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.04 }}>
+        Goal:
+      </div>
+      <div style={{ display: "grid", gap: 10, paddingLeft: 8 }}>
+        <div style={{ fontSize: 13, lineHeight: 1.5, fontWeight: 600 }}>・{goal.title}</div>
+        <div style={{ display: "grid", gap: 8, paddingLeft: 10 }}>
+          <ContextLine label="Subject" items={goal.subjects.map((item) => item.title)} />
+          <ContextLine label="Issue" items={goal.issues.map((item) => item.title)} />
+          <ContextLine label="Task" items={goal.tasks.map((item) => item.title)} />
+          <ContextLine label="Event" items={goal.events.map((item) => item.title)} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ChatWorkspace() {
   const router = useRouter();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -405,10 +431,6 @@ export function ChatWorkspace() {
         if (!cancelled) {
           setContextMap({
             goals: [],
-            subjects: [],
-            issues: [],
-            tasks: [],
-            events: [],
           });
           setError(loadError instanceof Error ? loadError.message : "Failed to load context map");
         }
@@ -762,12 +784,12 @@ export function ChatWorkspace() {
             Context map
           </div>
           {contextMap ? (
-            <div style={{ display: "grid", gap: 10, maxHeight: 220, overflow: "auto", paddingRight: 4 }}>
-              <ContextLine label="Goal" items={contextMap.goals} />
-              <ContextLine label="Subject" items={contextMap.subjects} />
-              <ContextLine label="Issue" items={contextMap.issues} />
-              <ContextLine label="Task" items={contextMap.tasks} />
-              <ContextLine label="Event" items={contextMap.events} />
+            <div style={{ display: "grid", gap: 12, maxHeight: 240, overflow: "auto", paddingRight: 4 }}>
+              {contextMap.goals.length === 0 ? (
+                <div style={{ color: "var(--muted)", fontSize: 12 }}>-</div>
+              ) : (
+                contextMap.goals.map((goal) => <ContextGoalBlock key={goal.id} goal={goal} />)
+              )}
             </div>
           ) : (
             <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading context...</div>
