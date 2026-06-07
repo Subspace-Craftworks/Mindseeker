@@ -46,6 +46,24 @@ type ChatThreadHistoryResponse = {
   error: { code: string; message: string } | null;
 };
 
+type ChatStreamEvent =
+  | {
+      type: "delta";
+      delta: string;
+      conversationId?: string;
+      messageId?: string;
+      taskId?: string;
+    }
+  | {
+      type: "done";
+      conversationId?: string;
+      answer: string;
+    }
+  | {
+      type: "error";
+      message: string;
+    };
+
 function extractConversationId(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return "";
@@ -74,6 +92,72 @@ function extractAssistantText(payload: unknown) {
   ];
 
   return candidates.find((value) => typeof value === "string" && value.trim())?.toString().trim() ?? "";
+}
+
+async function readChatStream(
+  response: Response,
+  onEvent: (event: ChatStreamEvent) => void,
+): Promise<void> {
+  const body = response.body;
+  if (!body) {
+    throw new Error("Chat stream is unavailable");
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const flush = (chunk: string) => {
+    buffer += chunk;
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() ?? "";
+
+    for (const block of blocks) {
+      const data = block
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.replace(/^data:\s?/, ""))
+        .join("\n");
+
+      if (!data) {
+        continue;
+      }
+
+      try {
+        const event = JSON.parse(data) as ChatStreamEvent;
+        onEvent(event);
+      } catch {
+        // Ignore malformed chunks and keep draining the stream.
+      }
+    }
+  };
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      flush(decoder.decode(value, { stream: true }));
+    }
+
+    const remainder = decoder.decode();
+    if (remainder) {
+      flush(remainder);
+    }
+
+    if (buffer.trim()) {
+      try {
+        const event = JSON.parse(buffer.replace(/^data:\s?/, "")) as ChatStreamEvent;
+        onEvent(event);
+      } catch {
+        // Ignore leftover parse errors.
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 function MarkdownMessage({ content }: { content: string }) {
@@ -258,7 +342,7 @@ export function ChatWorkspace() {
     };
   }, [sessionToken]);
 
-  const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : [];
+  const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : messagesByThread.draft ?? [];
 
   useEffect(() => {
     if (!sessionToken || !activeThreadId) {
@@ -322,7 +406,7 @@ export function ChatWorkspace() {
 
   async function refreshThreads(nextConversationId?: string) {
     if (!sessionToken) {
-      return;
+      return null;
     }
 
     const response = await fetch("/api/chat/threads", {
@@ -342,8 +426,11 @@ export function ChatWorkspace() {
       const matched = payload.data.find((thread) => thread.dify_conversation_id === nextConversationId);
       if (matched) {
         setActiveThreadId(matched.id);
+        return matched.id;
       }
     }
+
+    return null;
   }
 
   async function handleSend() {
@@ -353,11 +440,19 @@ export function ChatWorkspace() {
     }
 
     const threadKey = activeThread?.id ?? "draft";
+    const assistantId = `assistant-${Date.now()}`;
+    const createdAt = new Date().toISOString();
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
       content: message,
-      createdAt: new Date().toISOString(),
+      createdAt,
+    };
+    const assistantMessage: ChatMessage = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      createdAt,
     };
 
     setDraft("");
@@ -365,7 +460,7 @@ export function ChatWorkspace() {
     setError(null);
     setMessagesByThread((current) => ({
       ...current,
-      [threadKey]: [...(current[threadKey] ?? []), userMessage],
+      [threadKey]: [...(current[threadKey] ?? []), userMessage, assistantMessage],
     }));
 
     try {
@@ -380,9 +475,82 @@ export function ChatWorkspace() {
           conversation_id: activeThread?.dify_conversation_id ?? "",
         }),
       });
+      const contentType = response.headers.get("content-type") ?? "";
+
+      if (!response.ok) {
+        const payload = contentType.includes("application/json")
+          ? ((await response.json().catch(() => null)) as ChatMessageResponse | null)
+          : null;
+        const errorText = contentType.includes("text/plain") ? await response.text().catch(() => "") : "";
+        throw new Error(
+          payload?.error?.message ??
+            errorText ??
+            `Failed to send message (${response.status})`,
+        );
+      }
+
+      if (contentType.includes("text/event-stream")) {
+        let conversationId = activeThread?.dify_conversation_id ?? "";
+        let assistantContent = "";
+
+        await readChatStream(response, (event) => {
+          if (event.type === "error") {
+            throw new Error(event.message);
+          }
+
+          if (event.type === "delta") {
+            if (event.conversationId) {
+              conversationId = event.conversationId;
+            }
+            assistantContent += event.delta;
+            setMessagesByThread((current) => {
+              const currentMessages = current[threadKey] ?? [];
+              return {
+                ...current,
+                [threadKey]: currentMessages.map((currentMessage) =>
+                  currentMessage.id === assistantId
+                    ? { ...currentMessage, content: assistantContent }
+                    : currentMessage,
+                ),
+              };
+            });
+            return;
+          }
+
+          if (event.type === "done") {
+            if (event.conversationId) {
+              conversationId = event.conversationId;
+            }
+            assistantContent = event.answer || assistantContent;
+            setMessagesByThread((current) => {
+              const currentMessages = current[threadKey] ?? [];
+              return {
+                ...current,
+                [threadKey]: currentMessages.map((currentMessage) =>
+                  currentMessage.id === assistantId
+                    ? { ...currentMessage, content: assistantContent }
+                    : currentMessage,
+                ),
+              };
+            });
+          }
+        });
+
+        const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
+        if (threadKey === "draft" && nextThreadId) {
+          setMessagesByThread((current) => {
+            const draftMessages = current.draft ?? [];
+            const next = { ...current };
+            next[nextThreadId] = draftMessages;
+            delete next.draft;
+            return next;
+          });
+        }
+        return;
+      }
 
       const payload = (await response.json()) as ChatMessageResponse;
-      if (!response.ok || !payload.ok) {
+      if (!payload.ok) {
         throw new Error(payload.error?.message ?? `Failed to send message (${response.status})`);
       }
 
@@ -390,19 +558,26 @@ export function ChatWorkspace() {
       const conversationId = extractConversationId(payload.data);
 
       if (assistantText) {
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: assistantText,
-          createdAt: new Date().toISOString(),
-        };
         setMessagesByThread((current) => ({
           ...current,
-          [threadKey]: [...(current[threadKey] ?? []), assistantMessage],
+          [threadKey]: (current[threadKey] ?? []).map((currentMessage) =>
+            currentMessage.id === assistantId
+              ? { ...currentMessage, content: assistantText }
+              : currentMessage,
+          ),
         }));
       }
 
-      await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
+      const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
+      if (threadKey === "draft" && nextThreadId) {
+        setMessagesByThread((current) => {
+          const draftMessages = current.draft ?? [];
+          const next = { ...current };
+          next[nextThreadId] = draftMessages;
+          delete next.draft;
+          return next;
+        });
+      }
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Failed to send message");
     } finally {
