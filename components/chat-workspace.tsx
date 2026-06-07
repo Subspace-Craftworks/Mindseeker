@@ -46,6 +46,20 @@ type ChatThreadHistoryResponse = {
   error: { code: string; message: string } | null;
 };
 
+type ContextMap = {
+  goals: string[];
+  subjects: string[];
+  issues: string[];
+  tasks: string[];
+  events: string[];
+};
+
+type ContextMapResponse = {
+  ok: boolean;
+  data: ContextMap;
+  error: { code: string; message: string } | null;
+};
+
 type ChatStreamEvent =
   | {
       type: "delta";
@@ -253,9 +267,29 @@ function MarkdownMessage({ content }: { content: string }) {
   );
 }
 
+function ContextLine({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <div style={{ color: "var(--muted)", fontSize: 12 }}>{label}:</div>
+      <div style={{ display: "grid", gap: 2, paddingLeft: 12 }}>
+        {items.length === 0 ? (
+          <div style={{ color: "var(--muted)", fontSize: 12 }}>-</div>
+        ) : (
+          items.map((item) => (
+            <div key={item} style={{ fontSize: 12, lineHeight: 1.5 }}>
+              {item}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ChatWorkspace() {
   const router = useRouter();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [contextMap, setContextMap] = useState<ContextMap | null>(null);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messagesByThread, setMessagesByThread] = useState<Record<string, ChatMessage[]>>({});
@@ -336,6 +370,52 @@ export function ChatWorkspace() {
     }
 
     void loadThreads();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadContextMap() {
+      try {
+        const response = await fetch("/api/context-map", {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        const payload = (await response.json()) as ContextMapResponse;
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error?.message ?? `Failed to load context map (${response.status})`);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setContextMap(payload.data);
+      } catch (loadError) {
+        if (!cancelled) {
+          setContextMap({
+            goals: [],
+            subjects: [],
+            issues: [],
+            tasks: [],
+            events: [],
+          });
+          setError(loadError instanceof Error ? loadError.message : "Failed to load context map");
+        }
+      }
+    }
+
+    void loadContextMap();
 
     return () => {
       cancelled = true;
@@ -431,6 +511,25 @@ export function ChatWorkspace() {
     }
 
     return null;
+  }
+
+  async function refreshContextMap() {
+    if (!sessionToken) {
+      return;
+    }
+
+    const response = await fetch("/api/context-map", {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    });
+
+    const payload = (await response.json()) as ContextMapResponse;
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error?.message ?? `Failed to refresh context map (${response.status})`);
+    }
+
+    setContextMap(payload.data);
   }
 
   async function handleSend() {
@@ -537,6 +636,7 @@ export function ChatWorkspace() {
         });
 
         const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
+        await refreshContextMap();
         if (threadKey === "draft" && nextThreadId) {
           setMessagesByThread((current) => {
             const draftMessages = current.draft ?? [];
@@ -569,6 +669,7 @@ export function ChatWorkspace() {
       }
 
       const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
+      await refreshContextMap();
       if (threadKey === "draft" && nextThreadId) {
         setMessagesByThread((current) => {
           const draftMessages = current.draft ?? [];
@@ -654,33 +755,23 @@ export function ChatWorkspace() {
             border: "1px solid var(--line)",
             background: "rgba(247, 245, 240, 0.56)",
             display: "grid",
-            gap: 10,
+            gap: 8,
           }}
         >
           <div style={{ fontSize: 12, letterSpacing: 0.08, textTransform: "uppercase", color: "var(--muted)" }}>
             Context map
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {["Goal", "Subject", "Issue", "Task", "Event"].map((label) => (
-              <span
-                key={label}
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  border: "1px solid var(--line)",
-                  background: "white",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "var(--text)",
-                }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-          <div style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}>
-            Current chat context is organized from Goal down to Event.
-          </div>
+          {contextMap ? (
+            <div style={{ display: "grid", gap: 10, maxHeight: 220, overflow: "auto", paddingRight: 4 }}>
+              <ContextLine label="Goal" items={contextMap.goals} />
+              <ContextLine label="Subject" items={contextMap.subjects} />
+              <ContextLine label="Issue" items={contextMap.issues} />
+              <ContextLine label="Task" items={contextMap.tasks} />
+              <ContextLine label="Event" items={contextMap.events} />
+            </div>
+          ) : (
+            <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading context...</div>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
