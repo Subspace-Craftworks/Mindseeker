@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 type ChatThread = {
@@ -61,6 +63,99 @@ function extractAssistantText(payload: unknown) {
   ];
 
   return candidates.find((value) => typeof value === "string" && value.trim())?.toString().trim() ?? "";
+}
+
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p style={{ margin: "0 0 0.85em" }}>{children}</p>,
+        strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+        em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
+        a: ({ children, href }) => (
+          <a href={href} target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>
+            {children}
+          </a>
+        ),
+        code: ({ children, className }) => {
+          const isBlock = Boolean(className);
+          if (isBlock) {
+            return (
+              <code
+                style={{
+                  display: "block",
+                  whiteSpace: "pre-wrap",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "rgba(23, 33, 43, 0.06)",
+                  border: "1px solid rgba(23, 33, 43, 0.08)",
+                  overflowX: "auto",
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+                }}
+              >
+                {children}
+              </code>
+            );
+          }
+
+          return (
+            <code
+              style={{
+                padding: "0.15em 0.4em",
+                borderRadius: 6,
+                background: "rgba(23, 33, 43, 0.08)",
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+              }}
+            >
+              {children}
+            </code>
+          );
+        },
+        ul: ({ children }) => <ul style={{ margin: "0 0 0.85em", paddingLeft: "1.4em" }}>{children}</ul>,
+        ol: ({ children }) => <ol style={{ margin: "0 0 0.85em", paddingLeft: "1.4em" }}>{children}</ol>,
+        li: ({ children }) => <li style={{ margin: "0.25em 0" }}>{children}</li>,
+        blockquote: ({ children }) => (
+          <blockquote
+            style={{
+              margin: "0 0 0.85em",
+              paddingLeft: 14,
+              borderLeft: "3px solid rgba(23, 33, 43, 0.18)",
+              color: "var(--muted)",
+            }}
+          >
+            {children}
+          </blockquote>
+        ),
+        table: ({ children }) => (
+          <div style={{ overflowX: "auto", margin: "0 0 0.85em" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%" }}>{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th
+            style={{
+              border: "1px solid rgba(23, 33, 43, 0.12)",
+              padding: "8px 10px",
+              textAlign: "left",
+              background: "rgba(23, 33, 43, 0.04)",
+            }}
+          >
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td style={{ border: "1px solid rgba(23, 33, 43, 0.12)", padding: "8px 10px", verticalAlign: "top" }}>
+            {children}
+          </td>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 export function ChatWorkspace() {
@@ -467,11 +562,14 @@ export function ChatWorkspace() {
                   color: message.role === "user" ? "white" : "var(--text)",
                   border: message.role === "user" ? "none" : "1px solid var(--line)",
                   boxShadow: "0 10px 24px rgba(23, 33, 43, 0.06)",
-                  whiteSpace: "pre-wrap",
                   lineHeight: 1.7,
                 }}
               >
-                {message.content}
+                {message.role === "assistant" ? (
+                  <MarkdownMessage content={message.content} />
+                ) : (
+                  <div style={{ whiteSpace: "pre-wrap" }}>{message.content}</div>
+                )}
               </article>
             ))
           )}
