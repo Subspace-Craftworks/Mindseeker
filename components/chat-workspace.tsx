@@ -646,6 +646,43 @@ export function ChatWorkspace() {
           minHeight: 640,
         }}
       >
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 18,
+            border: "1px solid var(--line)",
+            background: "rgba(247, 245, 240, 0.56)",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 12, letterSpacing: 0.08, textTransform: "uppercase", color: "var(--muted)" }}>
+            Context map
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {["Goal", "Subject", "Issue", "Task", "Event"].map((label) => (
+              <span
+                key={label}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid var(--line)",
+                  background: "white",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--text)",
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+          <div style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}>
+            Current chat context is organized from Goal down to Event.
+          </div>
+        </div>
+
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>Threads</div>
