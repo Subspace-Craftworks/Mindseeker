@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { GoalsWorkspace } from "@/components/goals-workspace";
 import { requireCurrentUser } from "@/lib/supabase/server";
 
 export default async function GoalsPage() {
@@ -6,11 +7,14 @@ export default async function GoalsPage() {
 
   return (
     <AppShell userEmail={user.email}>
-      <main style={{ padding: 32, maxWidth: 960, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 32, marginBottom: 12 }}>Goals</h1>
-        <p style={{ color: "var(--muted)", lineHeight: 1.7 }}>
-          Goal overview and status surface will live here.
-        </p>
+      <main style={{ padding: 32, maxWidth: 1440, margin: "0 auto" }}>
+        <div style={{ marginBottom: 24, display: "grid", gap: 8 }}>
+          <h1 style={{ fontSize: 32, margin: 0 }}>Goals</h1>
+          <p style={{ color: "var(--muted)", lineHeight: 1.7, margin: 0 }}>
+            Review goals, inspect their related subjects, issues, tasks, and events, and keep the next action in view.
+          </p>
+        </div>
+        <GoalsWorkspace />
       </main>
     </AppShell>
   );

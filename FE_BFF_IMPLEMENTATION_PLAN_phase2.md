@@ -142,6 +142,7 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the browser env fix.
 - 2026-06-06: OAuth callback route was updated to write the session cookies into the redirect response before forwarding to `/chat`.
 - 2026-06-06: `npm run typecheck` and `npm run build` both passed after the callback cookie fix.
+- 2026-06-07: The Goals workspace was connected to the authenticated `/goals` page, giving the app a read-only list/detail surface for goals, subjects, issues, tasks, and events.
 
 ## Work Memo
 
@@ -154,11 +155,11 @@ Build the actual end-user experience on top of the working FE/BFF, Supabase, Ver
 - Dify chat requests are wired through the BFF and the reply text is rendered in the chat UI.
 - Thread deletion is available from the chat workspace.
 - Thread selection now loads the selected conversation history from the BFF.
+- The Goals workspace is now connected to the `/goals` page with a read-only list/detail view.
 - Production deployment is live and working.
 
 ### Remaining
 
 - Streaming-style response rendering in the FE.
-- Goals page basics and goal detail UX.
 - Verification and cleanup for the final phase2 pass.
 - Optional polish for thread title refresh behavior and loading/error states.
