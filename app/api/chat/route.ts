@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSupabaseUser } from "@/lib/auth";
+import { syncConversationUserId } from "@/lib/dify";
 import { upsertChatThread } from "@/lib/chat-threads";
 import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/env";
 
@@ -224,6 +225,18 @@ export async function POST(req: NextRequest) {
               title: message.slice(0, 40),
               appKey: "mindseeker",
             });
+
+            try {
+              await syncConversationUserId({
+                conversationId: upstreamConversationId,
+                userId: user.id,
+              });
+            } catch (syncError) {
+              console.warn(
+                "Failed to sync Dify conversation user_id variable:",
+                syncError instanceof Error ? syncError.message : syncError,
+              );
+            }
           }
 
           controller.enqueue(

@@ -26,6 +26,22 @@ export type DifyAppParameters = {
   suggested_questions?: string[];
 };
 
+export type DifyConversationVariable = {
+  id: string;
+  name: string;
+  value_type: string;
+  value: unknown;
+  description?: string;
+  created_at?: number;
+  updated_at?: number;
+};
+
+type DifyConversationVariableListResponse = {
+  limit?: number;
+  has_more?: boolean;
+  data?: DifyConversationVariable[];
+};
+
 type DifyConversationMessage = {
   id?: string;
   conversation_id?: string;
@@ -238,4 +254,111 @@ export async function getAppParameters() {
 
   const payload = (await response.json()) as DifyAppParameters;
   return payload;
+}
+
+export async function listConversationVariables(input: {
+  conversationId: string;
+  userId: string;
+  variableName?: string;
+  limit?: number;
+}) {
+  const params = new URLSearchParams({
+    user: input.userId,
+    limit: String(input.limit ?? 100),
+  });
+
+  if (input.variableName) {
+    params.set("variable_name", input.variableName);
+  }
+
+  const response = await fetch(
+    `${getDifyApiBaseUrl()}/conversations/${input.conversationId}/variables?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getDifyApiKey()}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Dify list conversation variables failed: ${response.status}${errorText ? ` - ${errorText.slice(0, 500)}` : ""}`,
+    );
+  }
+
+  const payload = (await response.json()) as DifyConversationVariableListResponse;
+  return {
+    variables: Array.isArray(payload.data) ? payload.data : [],
+    raw: payload,
+  };
+}
+
+export async function updateConversationVariable(input: {
+  conversationId: string;
+  userId: string;
+  variableId: string;
+  value: unknown;
+}) {
+  const response = await fetch(
+    `${getDifyApiBaseUrl()}/conversations/${input.conversationId}/variables/${input.variableId}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${getDifyApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        value: input.value,
+        user: input.userId,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Dify update conversation variable failed: ${response.status}${errorText ? ` - ${errorText.slice(0, 500)}` : ""}`,
+    );
+  }
+
+  return (await response.json()) as DifyConversationVariable;
+}
+
+export async function syncConversationUserId(input: { conversationId: string; userId: string }) {
+  const { variables } = await listConversationVariables({
+    conversationId: input.conversationId,
+    userId: input.userId,
+    variableName: "user_id",
+    limit: 100,
+  });
+
+  const variable = variables.find((item) => item.name === "user_id");
+  if (!variable) {
+    return {
+      updated: false,
+      reason: "user_id variable not found",
+    };
+  }
+
+  if (String(variable.value ?? "") === input.userId) {
+    return {
+      updated: false,
+      reason: "user_id already in sync",
+    };
+  }
+
+  await updateConversationVariable({
+    conversationId: input.conversationId,
+    userId: input.userId,
+    variableId: variable.id,
+    value: input.userId,
+  });
+
+  return {
+    updated: true,
+    reason: "user_id synced",
+  };
 }
