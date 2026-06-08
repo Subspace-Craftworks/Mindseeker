@@ -41,6 +41,40 @@ function fail(code: string, message: string, status = 400, details?: unknown): R
   );
 }
 
+function safeSerializeError(error: unknown) {
+  if (error instanceof Error) {
+    const serialized: Record<string, unknown> = {
+      name: error.name,
+      message: error.message,
+    };
+    if (error.stack) {
+      serialized.stack = error.stack;
+    }
+    return serialized;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    return error;
+  }
+
+  return { value: String(error) };
+}
+
+function summarizeSupabaseError(error: unknown) {
+  if (typeof error === "object" && error !== null) {
+    const record = error as Record<string, unknown>;
+    return {
+      name: typeof record.name === "string" ? record.name : undefined,
+      message: typeof record.message === "string" ? record.message : undefined,
+      code: typeof record.code === "string" ? record.code : undefined,
+      details: record.details,
+      hint: record.hint,
+    };
+  }
+
+  return safeSerializeError(error);
+}
+
 function corsHeaders(origin: string | null) {
   return {
     ...JSON_HEADERS,
@@ -737,9 +771,13 @@ const ACTIONS = new Map<string, (supabase: ReturnType<typeof getSupabaseClient>,
 
 serve(async (req) => {
   const origin = req.headers.get("origin");
+  const requestId = crypto.randomUUID();
   if (req.method === "OPTIONS") {
     return withCors(new Response(null, { status: 204, headers: JSON_HEADERS }), origin);
   }
+
+  let action: string | null = null;
+  let params: JsonObject = {};
 
   try {
     const apiKey = getEnv("PLANNING_API_KEY");
@@ -762,21 +800,23 @@ serve(async (req) => {
     }
 
     const body = await readBody(req);
-    const action = cleanString(body.action);
+    action = cleanString(body.action);
     if (!action) {
       return withCors(
         fail("VALIDATION_ERROR", "action is required", 400, {
+          request_id: requestId,
           received_keys: Object.keys(body),
         }),
         origin,
       );
     }
 
-    const params = getParams(body);
+    params = getParams(body);
     const handler = ACTIONS.get(action);
     if (!handler) {
       return withCors(
         fail("UNKNOWN_ACTION", `Unknown action: ${action}`, 400, {
+          request_id: requestId,
           available_actions: [...ACTIONS.keys()],
           received_keys: Object.keys(body),
         }),
@@ -788,8 +828,26 @@ serve(async (req) => {
     const response = await handler(supabase, params);
     return withCors(response, origin);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const serializedError = summarizeSupabaseError(error);
+    const message =
+      typeof serializedError === "object" && serializedError !== null && "message" in serializedError
+        ? String((serializedError as Record<string, unknown>).message ?? "Unknown error")
+        : String(error);
+    console.error("[planning-api] unhandled error", {
+      request_id: requestId,
+      action,
+      params,
+      error: serializedError,
+    });
     const status = message.includes("JSON") ? 400 : 500;
-    return withCors(fail(status === 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR", message, status), origin);
+    return withCors(
+      fail(status === 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR", message, status, {
+        request_id: requestId,
+        action,
+        params_keys: Object.keys(params),
+        error: serializedError,
+      }),
+      origin,
+    );
   }
 });
