@@ -1,17 +1,17 @@
 openapi: 3.0.3
 info:
-  title: Planning API
+  title: Context API
   version: 1.0.0
   description: >
-    Supabase Edge Function for managing goals, subjects, issues, tasks, and events.
+    Supabase Edge Function for updating the current goal of the active chat conversation.
     This API uses an action-based request body and a custom API key header for authentication.
 servers:
   - url: https://bwyamrnvijnwzgljhwqo.supabase.co
 paths:
-  /functions/v1/planning-api:
+  /functions/v1/context-api:
     post:
-      operationId: planningApi
-      summary: Execute a planning action
+      operationId: contextApi
+      summary: Execute a context action
       description: >
         Call the Supabase Edge Function with an action and params object.
         For Dify, use the X-Planning-Api-Key header instead of Authorization.
@@ -22,44 +22,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PlanningRequest'
+              $ref: '#/components/schemas/ContextRequest'
             examples:
-              listGoals:
-                summary: List active goals
+              setCurrentGoal:
+                summary: Set the current goal for the active chat conversation
                 value:
-                  action: list_goals
+                  action: set_current_goal
                   params:
-                    status: active
-                    limit: 20
-              createGoal:
-                summary: Create a goal
-                value:
-                  action: create_goal
-                  params:
-                    user_id: 678ea7b6-e79e-4f2c-ae35-4af35b650071
-                    title: Azure環境構築
-                    description: 社内向け検証環境を構築する
-                    status: active
-              completeGoal:
-                summary: Complete a goal and mark it inactive
-                value:
-                  action: complete_goal
-                  params:
-                    user_id: 678ea7b6-e79f-4f2c-ae35-4af35b650071
+                    conversation_id: 00000000-0000-0000-0000-000000000000
                     goal_id: 00000000-0000-0000-0000-000000000000
-                    reason: 目的を達成したため完了
-                    source: dify
-              createEvent:
-                summary: Create an event
-                value:
-                  action: create_event
-                  params:
-                    user_id: 678ea7b6-e79e-4f2c-ae35-4af35b650071
-                    goal_id: 00000000-0000-0000-0000-000000000000
-                    event_type: conversation
-                    title: Difyとの会話で方針を確認
-                    body: GoalからSubjectを導き、Eventを蓄積する方針とした。
-                    source: dify
       responses:
         '200':
           description: Successful response
@@ -98,7 +69,7 @@ components:
       in: header
       name: X-Planning-Api-Key
   schemas:
-    PlanningRequest:
+    ContextRequest:
       type: object
       required:
         - action
@@ -106,28 +77,19 @@ components:
         action:
           type: string
           enum:
-            - list_goals
-            - create_goal
-            - get_goal
-            - update_goal
-            - list_subjects
-            - create_subject
-            - get_subject
-            - update_subject
-            - list_issues
-            - create_issue
-            - update_issue
-            - list_tasks
-            - create_task
-            - update_task
-            - create_event
-            - list_events
-            - summarize_context
-            - complete_goal
+            - set_current_goal
           description: Action to execute.
         params:
           type: object
           description: Action-specific parameters.
+          properties:
+            conversation_id:
+              type: string
+            goal_id:
+              type: string
+              nullable: true
+          required:
+            - conversation_id
           additionalProperties: true
       additionalProperties: false
     ApiError:

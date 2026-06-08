@@ -181,6 +181,57 @@ async function updateGoal(supabase: ReturnType<typeof getSupabaseClient>, params
   return success(data);
 }
 
+async function completeGoal(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
+  const goalId = cleanString(params.goal_id);
+  const userId = cleanString(params.user_id);
+  if (!goalId) return fail("VALIDATION_ERROR", "goal_id is required", 400);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
+
+  const { data: goal, error: goalError } = await supabase.from("goals").select("*").eq("id", goalId).maybeSingle();
+  if (goalError) throw goalError;
+  if (!goal) return fail("NOT_FOUND", "Goal not found", 404);
+
+  const { data: updatedGoal, error: updateError } = await supabase
+    .from("goals")
+    .update({ status: "inactive", updated_at: new Date().toISOString() })
+    .eq("id", goalId)
+    .select("*")
+    .maybeSingle();
+  if (updateError) throw updateError;
+  if (!updatedGoal) return fail("NOT_FOUND", "Goal not found", 404);
+
+  const occurredAt = cleanString(params.occurred_at);
+  if (occurredAt && Number.isNaN(Date.parse(occurredAt))) {
+    return fail("VALIDATION_ERROR", "occurred_at must be a valid date-time string", 400);
+  }
+
+  const completionReason = cleanString(params.reason) ?? cleanString(params.note) ?? cleanString(params.body);
+  const title = cleanString(params.event_title) ?? `Goal completed: ${String(goal.title ?? "goal")}`;
+  const body = completionReason ?? `Goal \"${String(goal.title ?? goalId)}\" was marked inactive.`;
+  const source = cleanString(params.source) ?? "planning-api";
+
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .insert({
+      user_id: userId,
+      goal_id: goalId,
+      event_type: "goal_completed",
+      title,
+      body,
+      source,
+      occurred_at: occurredAt ?? new Date().toISOString(),
+    })
+    .select("*")
+    .single();
+
+  if (eventError) throw eventError;
+
+  return success({
+    goal: updatedGoal,
+    event,
+  });
+}
+
 async function listSubjects(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
   let query = supabase.from("subjects").select("*").order("updated_at", { ascending: false });
   const goalId = cleanString(params.goal_id);
@@ -663,42 +714,12 @@ async function summarizeContext(supabase: ReturnType<typeof getSupabaseClient>, 
   });
 }
 
-async function setCurrentGoal(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
-  const conversationId = cleanString(params.conversation_id);
-  if (!conversationId) return fail("VALIDATION_ERROR", "conversation_id is required", 400);
-
-  const goalIdRaw = params.goal_id;
-  const goalId = cleanString(goalIdRaw);
-
-  if (goalId) {
-    const goalResult = await supabase.from("goals").select("id").eq("id", goalId).maybeSingle();
-    if (goalResult.error) throw goalResult.error;
-    if (!goalResult.data) return fail("NOT_FOUND", "Goal not found", 404);
-  } else if (goalIdRaw !== undefined && goalIdRaw !== null && String(goalIdRaw).trim().length > 0 && !goalId) {
-    return fail("VALIDATION_ERROR", "goal_id must be a valid string or omitted", 400);
-  }
-
-  const { data, error } = await supabase
-    .from("chat_threads")
-    .update({
-      current_goal_id: goalId || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("dify_conversation_id", conversationId)
-    .select("*")
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!data) return fail("NOT_FOUND", "Chat thread not found", 404);
-
-  return success(data);
-}
-
 const ACTIONS = new Map<string, (supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) => Promise<Response>>([
   ["list_goals", listGoals],
   ["create_goal", createGoal],
   ["get_goal", getGoal],
   ["update_goal", updateGoal],
+  ["complete_goal", completeGoal],
   ["list_subjects", listSubjects],
   ["create_subject", createSubject],
   ["get_subject", getSubject],
@@ -712,7 +733,6 @@ const ACTIONS = new Map<string, (supabase: ReturnType<typeof getSupabaseClient>,
   ["create_event", createEvent],
   ["list_events", listEvents],
   ["summarize_context", summarizeContext],
-  ["set_current_goal", setCurrentGoal],
 ]);
 
 serve(async (req) => {

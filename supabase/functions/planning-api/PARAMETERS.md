@@ -52,6 +52,19 @@ This document is the source-aligned parameter reference for `supabase/functions/
   - `description`
   - `status`
 
+### `complete_goal`
+
+- Required:
+  - `goal_id`
+  - `user_id`
+- Optional:
+  - `reason`
+  - `note`
+  - `body`
+  - `event_title`
+  - `source`
+  - `occurred_at`
+
 ### `list_subjects`
 
 - Required: none
@@ -192,16 +205,6 @@ This document is the source-aligned parameter reference for `supabase/functions/
 - Optional:
   - none
 
-### `set_current_goal`
-
-- Required:
-  - `conversation_id`
-- Optional:
-  - `goal_id`
-- Behavior:
-  - Updates `chat_threads.current_goal_id` for the row matched by `dify_conversation_id`
-  - Omit `goal_id` or pass an empty value to clear the current goal
-
 ## Canonical identifier fields
 
 Use these names consistently in Dify:
@@ -210,6 +213,7 @@ Use these names consistently in Dify:
 - `subject_id` for subject-scoped relations
 - `issue_id` for issue-scoped relations
 - `task_id` for task-scoped relations
+- `conversation_id` for context API updates
 
 Do not send a generic `id` field.
 
@@ -217,7 +221,8 @@ Do not send a generic `id` field.
 
 - Use `X-Planning-Api-Key` as the auth header.
 - When creating or logging records, pass the Mindseeker application `user_id` input variable as `user_id`.
-- When updating the active conversation focus, pass `sys.conversation_id` as `conversation_id` and the selected goal's `goal_id`.
+- When completing a goal, use `complete_goal` with the same `user_id` so the completion event is recorded.
+- When updating the active conversation focus, use the separate context API with `sys.conversation_id` as `conversation_id` and the selected goal's `goal_id`.
 - Send the body as:
 
 ```json
