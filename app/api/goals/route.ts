@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordAppError } from "@/lib/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
 import { createGoal, listGoals } from "@/lib/goals";
 
 export async function GET(req: NextRequest) {
+  const routeName = "/api/goals";
+  const requestId = crypto.randomUUID();
   try {
     const { user } = await requireSupabaseUser(req);
     const goals = await listGoals(user.id);
@@ -10,6 +13,18 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message === "Unauthorized" || message === "Missing bearer token" ? 401 : 500;
+    if (status === 500) {
+      void recordAppError({
+        source: "bff",
+        component: "app/api/goals/route",
+        operation: "GET",
+        route: routeName,
+        requestId,
+        message,
+        details: error,
+        appKey: "mindseeker",
+      });
+    }
     return NextResponse.json(
       { ok: false, error: { code: status === 401 ? "UNAUTHORIZED" : "INTERNAL_ERROR", message } },
       { status },
@@ -18,6 +33,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const routeName = "/api/goals";
+  const requestId = crypto.randomUUID();
   try {
     const { user } = await requireSupabaseUser(req);
     const body = await req.json().catch(() => ({}));
@@ -43,10 +60,21 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message === "Unauthorized" || message === "Missing bearer token" ? 401 : 500;
+    if (status === 500) {
+      void recordAppError({
+        source: "bff",
+        component: "app/api/goals/route",
+        operation: "POST",
+        route: routeName,
+        requestId,
+        message,
+        details: error,
+        appKey: "mindseeker",
+      });
+    }
     return NextResponse.json(
       { ok: false, error: { code: status === 401 ? "UNAUTHORIZED" : "INTERNAL_ERROR", message } },
       { status },
     );
   }
 }
-

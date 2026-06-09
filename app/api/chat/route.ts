@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordAppError } from "@/lib/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
 import { syncConversationUserId } from "@/lib/dify";
 import { upsertChatThread } from "@/lib/chat-threads";
@@ -124,6 +125,8 @@ function createReadableStreamFromResponse(response: Response, onChunk: (chunk: s
 }
 
 export async function POST(req: NextRequest) {
+  const routeName = "/api/chat";
+  const requestId = crypto.randomUUID();
   try {
     const { user } = await requireSupabaseUser(req);
     const body = await req.json().catch(() => ({}));
@@ -250,6 +253,17 @@ export async function POST(req: NextRequest) {
           );
         } catch (error) {
           streamError = error instanceof Error ? error.message : "Unknown error";
+          void recordAppError({
+            source: "bff",
+            component: "app/api/chat/route",
+            operation: "stream-start",
+            route: routeName,
+            requestId,
+            userId: user.id,
+            message: streamError,
+            details: error,
+            appKey: "mindseeker",
+          });
           controller.enqueue(
             encoder.encode(
               encodeSseEvent({
@@ -277,6 +291,18 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const status = message === "Unauthorized" || message === "Missing bearer token" ? 401 : 500;
+    if (status === 500) {
+      void recordAppError({
+        source: "bff",
+        component: "app/api/chat/route",
+        operation: "POST",
+        route: routeName,
+        requestId,
+        message,
+        details: error,
+        appKey: "mindseeker",
+      });
+    }
     return NextResponse.json(
       {
         ok: false,

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { recordAppError } from "../_shared/app-logs.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -833,13 +834,30 @@ serve(async (req) => {
       typeof serializedError === "object" && serializedError !== null && "message" in serializedError
         ? String((serializedError as Record<string, unknown>).message ?? "Unknown error")
         : String(error);
+    const status = message.includes("JSON") ? 400 : 500;
     console.error("[planning-api] unhandled error", {
       request_id: requestId,
       action,
       params,
       error: serializedError,
     });
-    const status = message.includes("JSON") ? 400 : 500;
+    void recordAppError({
+      source: "edge-function",
+      component: "supabase/functions/planning-api",
+      operation: action ?? "unknown",
+      route: "/functions/v1/planning-api",
+      requestId,
+      message,
+      details: {
+        action,
+        params,
+        error: serializedError,
+      },
+      statusCode: status,
+      errorCode: status === 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR",
+      executionId: req.headers.get("x-supabase-execution-id"),
+      appKey: "mindseeker",
+    });
     return withCors(
       fail(status === 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR", message, status, {
         request_id: requestId,

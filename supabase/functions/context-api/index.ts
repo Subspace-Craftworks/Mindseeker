@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { recordAppError } from "../_shared/app-logs.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -189,6 +190,19 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const status = message.includes("JSON") ? 400 : 500;
+    void recordAppError({
+      source: "edge-function",
+      component: "supabase/functions/context-api",
+      operation: "unknown",
+      route: "/functions/v1/context-api",
+      requestId: crypto.randomUUID(),
+      message,
+      details: error,
+      statusCode: status,
+      errorCode: status === 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR",
+      executionId: req.headers.get("x-supabase-execution-id"),
+      appKey: "mindseeker",
+    });
     return withCors(fail(status === 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR", message, status), origin);
   }
 });
