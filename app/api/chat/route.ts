@@ -147,7 +147,6 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        inputs: { user_id: user.id },
         query: message,
         response_mode: "streaming",
         conversation_id: conversationId || "",

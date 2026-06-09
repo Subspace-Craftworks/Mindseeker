@@ -11,7 +11,3 @@ Create a new goal.
   - `description`
   - `status` (default `active`)
 
-## Notes
-- `user_id` must be the actual Mindseeker application `user_id` value passed into Dify.
-- Do not send the literal string `{{user_id}}`.
-- Use a short, clear title.

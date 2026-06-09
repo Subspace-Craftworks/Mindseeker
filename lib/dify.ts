@@ -141,7 +141,6 @@ export async function postChatMessage(input: ChatRequest) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      inputs: { user_id: input.userId },
       query: input.message,
       response_mode: "streaming",
       conversation_id: input.conversationId ?? "",
