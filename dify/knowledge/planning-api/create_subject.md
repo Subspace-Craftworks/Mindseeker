@@ -14,4 +14,5 @@ Create a new subject under a goal.
   - `priority` (default `normal`)
 
 ## Notes
-- `user_id` must be passed from the Mindseeker `user_id` input variable.
+- `user_id` must be the actual Mindseeker application `user_id` value passed into Dify.
+- Do not send the literal string `{{user_id}}`.

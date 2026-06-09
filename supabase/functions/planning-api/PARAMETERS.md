@@ -19,6 +19,7 @@ This document is the source-aligned parameter reference for `supabase/functions/
 - Empty strings are treated as `null` by `cleanString()`.
 - List endpoints support `limit` with the defaults and bounds described below.
 - Detail/update actions use the entity-specific identifier fields only. Do not use a generic `id` field in Dify.
+- `user_id` parameters must contain the actual Mindseeker application `user_id` value passed into Dify. Do not send the literal string `{{user_id}}`.
 
 ## Action parameter reference
 
@@ -220,7 +221,7 @@ Do not send a generic `id` field.
 ## Recommended Dify mapping
 
 - Use `X-Planning-Api-Key` as the auth header.
-- When creating or logging records, pass the Mindseeker application `user_id` input variable as `user_id`.
+- When creating or logging records, pass the resolved Mindseeker application `user_id` value as `user_id`.
 - When completing a goal, use `complete_goal` with the same `user_id` so the completion event is recorded.
 - When updating the active conversation focus, use the separate context API with `sys.conversation_id` as `conversation_id` and the selected goal's `goal_id`.
 - Send the body as:

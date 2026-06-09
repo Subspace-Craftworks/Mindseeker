@@ -16,5 +16,7 @@ Mark a goal as completed and record the completion event.
   - `occurred_at`
 
 ## Notes
+- `user_id` must be the actual Mindseeker application `user_id` value passed into Dify.
+- Do not send the literal string `{{user_id}}`.
 - This action updates the goal status to `inactive`.
 - It also creates a `goal_completed` event.

@@ -19,3 +19,5 @@ Create an event record.
 
 ## Notes
 - `occurred_at` must be a valid date-time string if provided.
+- `user_id` must be the actual Mindseeker application `user_id` value passed into Dify.
+- Do not send the literal string `{{user_id}}`.
