@@ -22,11 +22,6 @@
 - `app/api/chat/route.ts`
 - `lib/dify.ts`
 
-また、会話変数の同期として以下の処理がある。
-
-- `lib/dify.ts` の `syncConversationUserId()`
-- `app/api/chat/route.ts` からの `syncConversationUserId()` 呼び出し
-
 さらに、会話の識別や履歴取得では次が使われている。
 
 - `conversation_id`
@@ -42,7 +37,7 @@
 2. Dify に渡す識別子は、ワークフロー側で解決される前提に揃える
 3. `conversation_id` は明示的に送る
 4. `user_id` はワークフロー側で `sys.user_id` として扱う
-5. 会話変数の同期ロジックは不要であれば削除する
+5. 会話変数の同期ロジックは使わない前提で整理する
 6. ナレッジをワークフロー向けに再確認する
 7. 実運用前に、新旧両方の挙動差をテストする
 
@@ -103,16 +98,14 @@
 
 - チャット API 用の関数を廃止してワークフロー用関数に置き換える
 - 会話履歴取得や会話削除が必要なら、それだけを残す
-- 会話変数の同期関数は不要なら削除する
+- 会話変数の同期関数は削除する
 
 少なくとも次の観点で見直す。
 
 - `postChatMessage()`
-- `syncConversationUserId()`
-- `listConversationVariables()`
-- `updateConversationVariable()`
+- 会話変数に依存する補助関数
 
-ワークフロー移行後に `user_id` 同期が不要なら、会話変数に依存する実装は外す。
+ワークフロー移行後は、`user_id` の会話変数同期は使わない。
 
 ---
 
