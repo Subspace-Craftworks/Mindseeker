@@ -1,0 +1,24 @@
+{
+  "function_name": "list_goals",
+  "api": "planning-api",
+  "action": "list_goals",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "query": "現在のGoalを一覧で見せてください。activeなものを中心に確認したいです。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "00000000-0000-0000-0000-000000000001",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "list_goals",
+    "params": {
+      "status": "active",
+      "limit": 20
+    }
+  }
+}
+

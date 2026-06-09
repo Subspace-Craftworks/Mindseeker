@@ -1,0 +1,23 @@
+{
+  "function_name": "get_goal",
+  "api": "planning-api",
+  "action": "get_goal",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "query": "Goal ID 11111111-1111-1111-1111-111111111111 の詳細を見せてください。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "00000000-0000-0000-0000-000000000001",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "get_goal",
+    "params": {
+      "goal_id": "11111111-1111-1111-1111-111111111111"
+    }
+  }
+}
+

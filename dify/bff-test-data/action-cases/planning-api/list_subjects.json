@@ -1,0 +1,26 @@
+{
+  "function_name": "list_subjects",
+  "api": "planning-api",
+  "action": "list_subjects",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "query": "Goal ID 11111111-1111-1111-1111-111111111111 に紐づくSubjectを一覧してください。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "00000000-0000-0000-0000-000000000001",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "list_subjects",
+    "params": {
+      "goal_id": "11111111-1111-1111-1111-111111111111",
+      "status": "open",
+      "priority": "normal",
+      "limit": 20
+    }
+  }
+}
+

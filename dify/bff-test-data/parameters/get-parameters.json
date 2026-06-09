@@ -1,0 +1,9 @@
+{
+  "name": "get app parameters",
+  "method": "GET",
+  "path": "/parameters",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}
+

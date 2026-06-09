@@ -1,0 +1,27 @@
+{
+  "function_name": "update_issue",
+  "api": "planning-api",
+  "action": "update_issue",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "query": "Issue ID 33333333-3333-3333-3333-333333333333 のタイトルを更新してください。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "00000000-0000-0000-0000-000000000001",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "update_issue",
+    "params": {
+      "issue_id": "33333333-3333-3333-3333-333333333333",
+      "subject_id": "22222222-2222-2222-2222-222222222222",
+      "title": "Difyテスト用Issue updated",
+      "description": "Difyの update_issue 動作確認用",
+      "status": "open",
+      "severity": "medium"
+    }
+  }
+}

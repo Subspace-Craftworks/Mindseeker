@@ -1,0 +1,10 @@
+{
+  "function_name": "list_goals",
+  "api": "planning-api",
+  "action": "list_goals",
+  "params": {
+    "status": "active",
+    "limit": 20
+  }
+}
+

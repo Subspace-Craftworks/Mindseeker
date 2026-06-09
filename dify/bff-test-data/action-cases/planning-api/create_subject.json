@@ -1,0 +1,28 @@
+{
+  "function_name": "create_subject",
+  "api": "planning-api",
+  "action": "create_subject",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "query": "Goal ID 11111111-1111-1111-1111-111111111111 に Subject を作ってください。タイトルは「Difyテスト用Subject」です。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "00000000-0000-0000-0000-000000000001",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "create_subject",
+    "params": {
+      "user_id": "00000000-0000-0000-0000-000000000001",
+      "goal_id": "11111111-1111-1111-1111-111111111111",
+      "title": "Difyテスト用Subject",
+      "description": "Difyの create_subject 動作確認用",
+      "status": "open",
+      "priority": "normal"
+    }
+  }
+}
+

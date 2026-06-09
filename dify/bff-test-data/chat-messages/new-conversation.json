@@ -1,0 +1,16 @@
+{
+  "name": "chat-messages new conversation",
+  "method": "POST",
+  "path": "/chat-messages",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "query": "こんにちは",
+    "response_mode": "streaming",
+    "conversation_id": "",
+    "user": "00000000-0000-0000-0000-000000000000",
+    "auto_generate_name": true
+  }
+}
+

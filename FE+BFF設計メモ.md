@@ -71,9 +71,6 @@ Dify APIの `user` パラメータにはSupabase Authの `user.id` を渡す。
 
 ```json
 {
-  "inputs": {
-    "user_id": "<supabase_user_id>"
-  },
   "query": "ユーザー入力",
   "response_mode": "streaming",
   "conversation_id": "<dify_conversation_id>",

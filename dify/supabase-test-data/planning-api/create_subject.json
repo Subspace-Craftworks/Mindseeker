@@ -1,0 +1,14 @@
+{
+  "function_name": "create_subject",
+  "api": "planning-api",
+  "action": "create_subject",
+  "params": {
+    "user_id": "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+    "goal_id": "11111111-1111-1111-1111-111111111111",
+    "title": "Difyテスト用Subject",
+    "description": "Difyの create_subject 動作確認用のサンプル",
+    "status": "open",
+    "priority": "normal"
+  }
+}
+

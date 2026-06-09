@@ -1,0 +1,9 @@
+{
+  "function_name": "summarize_context",
+  "api": "planning-api",
+  "action": "summarize_context",
+  "params": {
+    "goal_id": "11111111-1111-1111-1111-111111111111"
+  }
+}
+

@@ -1,0 +1,14 @@
+{
+  "name": "list conversation history",
+  "method": "GET",
+  "path": "/messages",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "query": {
+    "conversation_id": "11111111-1111-1111-1111-111111111111",
+    "user": "00000000-0000-0000-0000-000000000000",
+    "limit": 100
+  }
+}
+
