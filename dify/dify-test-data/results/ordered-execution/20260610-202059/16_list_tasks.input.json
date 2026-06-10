@@ -1,0 +1,12 @@
+{
+  "method": "POST",
+  "path": "/chat-messages",
+  "body": {
+    "inputs": {},
+    "query": "Goal ID 132d3e73-295e-45a5-ad4a-caad9a74bbb1 や Subject ID 725d7a3c-ee51-4a17-9bed-d61c732db584 に紐づくTaskを一覧してください。",
+    "response_mode": "streaming",
+    "conversation_id": "",
+    "user": "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+    "auto_generate_name": true
+  }
+}

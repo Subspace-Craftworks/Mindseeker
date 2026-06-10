@@ -1,41 +1,23 @@
-# BFF - Dify Interface Specification
+# BFF - Dify Transport Specification
 
-This document describes the current interface between the Mindseeker BFF and Dify as implemented in the source code.
+This document describes only the transport-level contract between the Mindseeker BFF and Dify.
 
-It is source-driven and reflects the current code path, not the planned workflow migration.
+It intentionally excludes Dify tool/action semantics. Those belong in the OpenAPI files and the separate Dify action spec document.
 
 ## Scope
 
-The BFF currently talks to Dify from these places:
+The BFF talks to Dify from these places:
 
 - `app/api/chat/route.ts`
 - `app/api/chat/opening-statement/route.ts`
 - `lib/dify.ts`
 
-The main chat flow uses Dify's chat API. The BFF does **not** currently send planning-function payloads such as `create_goal` or `complete_goal` to Dify directly.
+The implemented transport endpoints are:
 
-## Source of truth for tool/action payloads
-
-When Dify selects a tool call, the expected function name and parameters are defined by these source files:
-
-- `dify/planning-api.openapi.yaml`
-- `dify/context-api.openapi.yaml`
-
-Those OpenAPI files are the reference for:
-
-- the available `action` names
-- the required and optional `params`
-- the parameter names that Dify must emit before the BFF or tool layer forwards the request to Supabase Edge Functions
-
-In other words:
-
-- BFF-to-Dify chat payloads are defined by this document
-- Dify-to-Supabase tool/action payloads are defined by the OpenAPI files above
-
-The `dify/bff-test-data/action-cases/` fixtures are built from both:
-
-- the current BFF request shape
-- the expected `action` and `params` from the OpenAPI specs
+- `POST /chat-messages`
+- `GET /parameters`
+- `GET /messages`
+- `DELETE /conversations/{conversationId}`
 
 ## Environment variables
 
@@ -249,15 +231,3 @@ Current important points:
 - The BFF does not currently send planning function calls like `create_goal`
 - The BFF does not currently send `inputs.user_id`
 
----
-
-## Implication for test data
-
-Test data intended for Dify should be based on the actual current interface above.
-
-That means:
-
-- For BFF chat verification, the test target is the chat API payload, not `planning-api` function bodies
-- For `planning-api` and `context-api`, separate direct tests should be created against the Supabase Edge Functions themselves
-- A matching set of BFF-to-Dify fixtures lives under `dify/bff-test-data/`
-- The Dify-side action expectations should always be checked against `dify/planning-api.openapi.yaml` and `dify/context-api.openapi.yaml`

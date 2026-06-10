@@ -1,0 +1,29 @@
+{
+  "name": "Goal and Task Creation Scenario",
+  "steps": [
+    {
+      "name": "01_create_goal",
+      "query": "Difyテスト用目標を作成してください。タイトルは「AIによる自動化目標」、説明は「Difyテスト用の新規目標です。」とします。"
+    },
+    {
+      "name": "02_create_subject",
+      "query": "さきほど作成した目標の中に、新しいSubjectを作成してください。タイトルは「Dify自動化サブジェクト」とします。"
+    },
+    {
+      "name": "03_create_issue",
+      "query": "作成した「Dify自動化サブジェクト」の中に、新しいIssueを作成してください。タイトルは「テスト自動化の課題」とします。"
+    },
+    {
+      "name": "04_create_task",
+      "query": "作成した「Dify自動化サブジェクト」の中の課題「テスト自動化の課題」に、新しいTaskを作成してください。タイトルは「自動化シナリオのテスト実行」とします。"
+    },
+    {
+      "name": "05_create_event",
+      "query": "目標「AIによる自動化目標」に関連付けて、Eventを1つ登録してください。タイトルは「テスト完了イベント」とします。"
+    },
+    {
+      "name": "06_list_goals",
+      "query": "現在アクティブな目標の一覧を表示してください。"
+    }
+  ]
+}

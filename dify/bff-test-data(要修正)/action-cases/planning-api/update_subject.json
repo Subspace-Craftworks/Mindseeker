@@ -1,0 +1,28 @@
+{
+  "function_name": "update_subject",
+  "api": "planning-api",
+  "action": "update_subject",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "inputs": {},
+      "query": "Subject ID 22222222-2222-2222-2222-222222222222 のタイトルを「Difyテスト用Subject updated」に変更してください。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "update_subject",
+    "params": {
+      "subject_id": "22222222-2222-2222-2222-222222222222",
+      "goal_id": "11111111-1111-1111-1111-111111111111",
+      "title": "Difyテスト用Subject updated",
+      "description": "Difyの update_subject 動作確認用",
+      "status": "open",
+      "priority": "normal"
+    }
+  }
+}

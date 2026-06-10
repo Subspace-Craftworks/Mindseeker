@@ -1,0 +1,10 @@
+﻿{
+    "inputs":  {
+
+               },
+    "query":  "さきほど作成した「テストタスク」のタイトルを「進捗中のテストタスク」に変更し、ステータスを「進行中 (doing)」に更新してください。",
+    "response_mode":  "blocking",
+    "conversation_id":  "55aae14a-1acc-4066-97bc-33781554c6f6",
+    "user":  "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+    "auto_generate_name":  true
+}

@@ -1,0 +1,14 @@
+﻿{
+    "method":  "POST",
+    "path":  "/chat-messages",
+    "body":  {
+                 "inputs":  {
+
+                            },
+                 "query":  "Create a new goal. Title: \"DifyGoalOrdered_20260610-200909\", Description: \"Ordered execution test for create_goal\".",
+                 "response_mode":  "streaming",
+                 "conversation_id":  "",
+                 "user":  "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+                 "auto_generate_name":  true
+             }
+}

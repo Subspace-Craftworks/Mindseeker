@@ -1,0 +1,10 @@
+﻿{
+    "inputs":  {
+
+               },
+    "query":  "「ライフサイクルサブジェクト」の中にあるタスクの一覧を再度取得してください。",
+    "response_mode":  "blocking",
+    "conversation_id":  "01c7e3a3-ce47-4777-83bb-d01c4998b922",
+    "user":  "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+    "auto_generate_name":  true
+}

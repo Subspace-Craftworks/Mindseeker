@@ -1,0 +1,26 @@
+{
+  "function_name": "create_goal",
+  "api": "planning-api",
+  "action": "create_goal",
+  "bff_request": {
+    "method": "POST",
+    "path": "/chat-messages",
+    "body": {
+      "inputs": {},
+      "query": "新しいGoalを作成してください。タイトルは「Difyテスト用Goal」、説明は「Difyの create_goal 動作確認用」です。",
+      "response_mode": "streaming",
+      "conversation_id": "",
+      "user": "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+      "auto_generate_name": true
+    }
+  },
+  "expected_tool_call": {
+    "action": "create_goal",
+    "params": {
+      "user_id": "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+      "title": "Difyテスト用Goal",
+      "description": "Difyの create_goal 動作確認用",
+      "status": "active"
+    }
+  }
+}

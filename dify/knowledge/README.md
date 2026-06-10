@@ -1,0 +1,1 @@
+ここに書かれているAPIはsupabaseのedge functionsに投げるときに使うもの。Difyに設定する。

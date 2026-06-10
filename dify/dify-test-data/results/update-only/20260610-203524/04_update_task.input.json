@@ -1,0 +1,12 @@
+{
+  "method": "POST",
+  "path": "/chat-messages",
+  "body": {
+    "inputs": {},
+    "query": "Task ID ae30435d-77e1-4591-9b47-a7544c9595e8 の内容を更新し、更新済みであることが分かる文面にしてください。",
+    "response_mode": "streaming",
+    "conversation_id": "",
+    "user": "678ea7b6-e79e-4f2c-ae35-4af35b650071",
+    "auto_generate_name": true
+  }
+}
