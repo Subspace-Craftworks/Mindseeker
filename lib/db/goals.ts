@@ -82,6 +82,44 @@ export async function updateGoal(input: {
 
 export async function deleteGoal(input: { userId: string; goalId: string }) {
   const supabase = createSupabaseServiceClient();
+
+  // Get subjects for the goal
+  const { data: subjects } = await supabase
+    .from("subjects")
+    .select("id")
+    .eq("goal_id", input.goalId)
+    .eq("user_id", input.userId);
+  const subjectIds = (subjects ?? []).map((s) => s.id);
+
+  // Get issues for the subjects
+  let issueIds: string[] = [];
+  if (subjectIds.length > 0) {
+    const { data: issues } = await supabase
+      .from("issues")
+      .select("id")
+      .in("subject_id", subjectIds)
+      .eq("user_id", input.userId);
+    issueIds = (issues ?? []).map((i) => i.id);
+  }
+
+  // Delete events
+  await supabase.from("events").delete().eq("goal_id", input.goalId).eq("user_id", input.userId);
+  if (subjectIds.length > 0) {
+    await supabase.from("events").delete().in("subject_id", subjectIds).eq("user_id", input.userId);
+    await supabase.from("tasks").delete().in("subject_id", subjectIds).eq("user_id", input.userId);
+  }
+  if (issueIds.length > 0) {
+    await supabase.from("events").delete().in("issue_id", issueIds).eq("user_id", input.userId);
+    await supabase.from("tasks").delete().in("issue_id", issueIds).eq("user_id", input.userId);
+  }
+
+  // Delete issues & subjects
+  if (subjectIds.length > 0) {
+    await supabase.from("issues").delete().in("subject_id", subjectIds).eq("user_id", input.userId);
+  }
+  await supabase.from("subjects").delete().eq("goal_id", input.goalId).eq("user_id", input.userId);
+
+  // Finally delete the goal
   const { error } = await supabase
     .from("goals")
     .delete()
