@@ -53,6 +53,44 @@ export async function createGoal(input: { userId: string; title: string; descrip
   return data as GoalRecord;
 }
 
+export async function updateGoal(input: {
+  userId: string;
+  goalId: string;
+  title?: string;
+  description?: string | null;
+  status?: string;
+}) {
+  const supabase = createSupabaseServiceClient();
+  const updates: Partial<{ title: string; description: string | null; status: string; updated_at: string }> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.title !== undefined) updates.title = input.title;
+  if (input.description !== undefined) updates.description = input.description;
+  if (input.status !== undefined) updates.status = input.status;
+
+  const { data, error } = await supabase
+    .from("goals")
+    .update(updates)
+    .eq("id", input.goalId)
+    .eq("user_id", input.userId)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as GoalRecord;
+}
+
+export async function deleteGoal(input: { userId: string; goalId: string }) {
+  const supabase = createSupabaseServiceClient();
+  const { error } = await supabase
+    .from("goals")
+    .delete()
+    .eq("id", input.goalId)
+    .eq("user_id", input.userId);
+
+  if (error) throw error;
+}
+
 export async function getGoalDetail(input: { userId: string; goalId: string }) {
   const supabase = createSupabaseServiceClient();
   const { data: goal, error: goalError } = await supabase

@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type GoalRecord = {
   id: string;
@@ -34,6 +36,14 @@ type GoalDetailResponse = {
   error: { code: string; message: string } | null;
 };
 
+type GoalUpdateResponse = {
+  ok: boolean;
+  data: GoalRecord | null;
+  error: { code: string; message: string } | null;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function asText(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : "";
 }
@@ -41,29 +51,23 @@ function asText(value: unknown) {
 function summarizeRecord(record: Record<string, unknown>) {
   const preferredKeys = ["title", "name", "status", "description", "summary", "content", "note"];
   const pairs: Array<[string, string]> = [];
-
   for (const key of preferredKeys) {
     const value = asText(record[key]);
-    if (value) {
-      pairs.push([key, value]);
-    }
+    if (value) pairs.push([key, value]);
   }
-
-  if (pairs.length > 0) {
-    return pairs;
-  }
-
+  if (pairs.length > 0) return pairs;
   return Object.entries(record)
-    .filter(([, value]) => typeof value === "string" && value.trim())
+    .filter(([, v]) => typeof v === "string" && (v as string).trim())
     .slice(0, 4)
-    .map(([key, value]) => [key, String(value).trim()] as [string, string]);
+    .map(([k, v]) => [k, String(v).trim()] as [string, string]);
 }
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function RenderRecordList({ items }: { items: Record<string, unknown>[] }) {
   if (items.length === 0) {
     return <div style={{ color: "var(--muted)", fontSize: 14 }}>None</div>;
   }
-
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {items.slice(0, 5).map((item, index) => {
@@ -87,7 +91,7 @@ function RenderRecordList({ items }: { items: Record<string, unknown>[] }) {
             ) : (
               summary.map(([label, value]) => (
                 <div key={label} style={{ display: "grid", gap: 4 }}>
-                  <div style={{ color: "var(--muted)", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.04 }}>
+                  <div style={{ color: "var(--muted)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {label}
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.7 }}>{value}</div>
@@ -101,6 +105,273 @@ function RenderRecordList({ items }: { items: Record<string, unknown>[] }) {
   );
 }
 
+// ─── Goal Editor ──────────────────────────────────────────────────────────────
+
+type GoalEditorProps = {
+  detail: GoalDetail;
+  sessionToken: string;
+  onSaved: (updated: GoalRecord) => void;
+  onDeleted: (goalId: string) => void;
+};
+
+function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEditorProps) {
+  const [title, setTitle] = useState(detail.goal.title);
+  const [description, setDescription] = useState(detail.goal.description ?? "");
+  const [status, setStatus] = useState<"active" | "inactive">(
+    detail.goal.status === "inactive" ? "inactive" : "active",
+  );
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Reset form when a different goal is loaded
+  const goalIdRef = useRef(detail.goal.id);
+  useEffect(() => {
+    if (goalIdRef.current !== detail.goal.id) {
+      goalIdRef.current = detail.goal.id;
+      setTitle(detail.goal.title);
+      setDescription(detail.goal.description ?? "");
+      setStatus(detail.goal.status === "inactive" ? "inactive" : "active");
+      setSaveError(null);
+    }
+  }, [detail]);
+
+  const isDirty =
+    title.trim() !== detail.goal.title ||
+    (description.trim() || null) !== detail.goal.description ||
+    status !== (detail.goal.status === "inactive" ? "inactive" : "active");
+
+  async function handleSave() {
+    if (!title.trim()) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/goals/${detail.goal.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          status,
+        }),
+      });
+      const payload = (await res.json()) as GoalUpdateResponse;
+      if (!res.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error?.message ?? `Save failed (${res.status})`);
+      }
+      onSaved(payload.data);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete goal "${detail.goal.title}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/goals/${detail.goal.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      const payload = (await res.json()) as { ok: boolean; error?: { message: string } };
+      if (!res.ok || !payload.ok) {
+        throw new Error(payload.error?.message ?? `Delete failed (${res.status})`);
+      }
+      onDeleted(detail.goal.id);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to delete");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      {/* ── Editor form ── */}
+      <div
+        style={{
+          border: "1px solid var(--line)",
+          borderRadius: 20,
+          padding: 20,
+          background: "rgba(247, 245, 240, 0.56)",
+          display: "grid",
+          gap: 16,
+        }}
+      >
+        {/* Title */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={saving || deleting}
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid var(--line)",
+              background: "var(--panel)",
+              outline: "none",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Status toggle */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Status
+          </label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {(["active", "inactive"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatus(s)}
+                disabled={saving || deleting}
+                style={{
+                  padding: "7px 18px",
+                  borderRadius: 20,
+                  border: status === s ? "1.5px solid var(--accent)" : "1.5px solid var(--line)",
+                  background: status === s ? "rgba(15, 118, 110, 0.10)" : "var(--panel)",
+                  color: status === s ? "var(--accent)" : "var(--muted)",
+                  fontWeight: status === s ? 700 : 400,
+                  fontSize: 14,
+                  cursor: saving || deleting ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Description */}
+        <div style={{ display: "grid", gap: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Description
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={saving || deleting}
+            rows={4}
+            placeholder="Add a description..."
+            style={{
+              fontSize: 14,
+              lineHeight: 1.7,
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid var(--line)",
+              background: "var(--panel)",
+              outline: "none",
+              resize: "vertical",
+              width: "100%",
+              boxSizing: "border-box",
+              fontFamily: "inherit",
+            }}
+          />
+        </div>
+
+        {/* Error */}
+        {saveError ? (
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid rgba(140, 75, 45, 0.24)",
+              background: "rgba(140, 75, 45, 0.08)",
+              color: "var(--accent-2)",
+              fontSize: 13,
+            }}
+          >
+            {saveError}
+          </div>
+        ) : null}
+
+        {/* Actions */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => void handleDelete()}
+            disabled={saving || deleting}
+            style={{
+              padding: "8px 18px",
+              borderRadius: 12,
+              border: "1.5px solid rgba(180, 60, 40, 0.35)",
+              background: "transparent",
+              color: deleting ? "var(--muted)" : "rgba(180, 60, 40, 0.85)",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: saving || deleting ? "not-allowed" : "pointer",
+            }}
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || deleting || !isDirty || !title.trim()}
+            style={{
+              padding: "8px 24px",
+              borderRadius: 12,
+              border: "none",
+              background: isDirty && title.trim() && !saving && !deleting ? "var(--accent)" : "var(--line)",
+              color: isDirty && title.trim() && !saving && !deleting ? "#fff" : "var(--muted)",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: saving || deleting || !isDirty || !title.trim() ? "not-allowed" : "pointer",
+              transition: "background 0.15s",
+            }}
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Related data (read-only) ── */}
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Related data
+        </div>
+
+        {(
+          [
+            { label: "Subjects", items: detail.subjects },
+            { label: "Issues", items: detail.issues },
+            { label: "Tasks", items: detail.tasks },
+            { label: "Events", items: detail.events },
+          ] as const
+        ).map(({ label, items }) => (
+          <div key={label}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+              {label}
+              <span style={{ marginLeft: 8, fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>
+                ({items.length})
+              </span>
+            </div>
+            <RenderRecordList items={items as Record<string, unknown>[]} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main workspace ───────────────────────────────────────────────────────────
+
 export function GoalsWorkspace() {
   const router = useRouter();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -112,137 +383,101 @@ export function GoalsWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedGoalSummary = useMemo(
-    () => goals.find((goal) => goal.id === selectedGoalId) ?? selectedGoal?.goal ?? null,
+    () => goals.find((g) => g.id === selectedGoalId) ?? selectedGoal?.goal ?? null,
     [goals, selectedGoal, selectedGoalId],
   );
 
+  // ── Session ──
   useEffect(() => {
     let active = true;
-
     async function loadSession() {
       const supabase = createBrowserSupabaseClient();
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token ?? null;
-
-      if (!active) {
-        return;
-      }
-
-      if (!token) {
-        router.replace("/login");
-        return;
-      }
-
+      if (!active) return;
+      if (!token) { router.replace("/login"); return; }
       setSessionToken(token);
     }
-
     void loadSession();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [router]);
 
+  // ── Goal list ──
   useEffect(() => {
-    if (!sessionToken) {
-      return;
-    }
-
+    if (!sessionToken) return;
     let cancelled = false;
-
     async function loadGoals() {
       setLoadingGoals(true);
       setError(null);
       try {
-        const response = await fetch("/api/goals", {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-          },
+        const res = await fetch("/api/goals", {
+          headers: { Authorization: `Bearer ${sessionToken}` },
         });
-
-        const payload = (await response.json()) as GoalsResponse;
-        if (!response.ok || !payload.ok) {
-          throw new Error(payload.error?.message ?? `Failed to load goals (${response.status})`);
-        }
-
-        if (cancelled) {
-          return;
-        }
-
+        const payload = (await res.json()) as GoalsResponse;
+        if (!res.ok || !payload.ok) throw new Error(payload.error?.message ?? `Failed to load goals (${res.status})`);
+        if (cancelled) return;
         setGoals(payload.data);
-        setSelectedGoalId((current) => current ?? payload.data[0]?.id ?? null);
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Failed to load goals");
-        }
+        setSelectedGoalId((cur) => cur ?? payload.data[0]?.id ?? null);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load goals");
       } finally {
-        if (!cancelled) {
-          setLoadingGoals(false);
-        }
+        if (!cancelled) setLoadingGoals(false);
       }
     }
-
     void loadGoals();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [sessionToken]);
 
+  // ── Goal detail ──
   useEffect(() => {
-    if (!sessionToken || !selectedGoalId) {
-      return;
-    }
-
+    if (!sessionToken || !selectedGoalId) return;
     let cancelled = false;
-
-    async function loadGoalDetail() {
+    async function loadDetail() {
       setLoadingDetail(true);
       setError(null);
       try {
-        const response = await fetch(`/api/goals/${selectedGoalId}`, {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-          },
+        const res = await fetch(`/api/goals/${selectedGoalId}`, {
+          headers: { Authorization: `Bearer ${sessionToken}` },
         });
-
-        const payload = (await response.json()) as GoalDetailResponse;
-        if (!response.ok || !payload.ok || !payload.data) {
-          throw new Error(payload.error?.message ?? `Failed to load goal detail (${response.status})`);
-        }
-
-        if (cancelled) {
-          return;
-        }
-
+        const payload = (await res.json()) as GoalDetailResponse;
+        if (!res.ok || !payload.ok || !payload.data) throw new Error(payload.error?.message ?? `Failed to load goal (${res.status})`);
+        if (cancelled) return;
         setSelectedGoal(payload.data);
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Failed to load goal detail");
-        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load goal detail");
       } finally {
-        if (!cancelled) {
-          setLoadingDetail(false);
-        }
+        if (!cancelled) setLoadingDetail(false);
       }
     }
-
-    void loadGoalDetail();
-
-    return () => {
-      cancelled = true;
-    };
+    void loadDetail();
+    return () => { cancelled = true; };
   }, [selectedGoalId, sessionToken]);
 
+  // ── Callbacks from editor ──
+  function handleSaved(updated: GoalRecord) {
+    setGoals((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+    setSelectedGoal((prev) => (prev ? { ...prev, goal: updated } : prev));
+  }
+
+  function handleDeleted(goalId: string) {
+    const remaining = goals.filter((g) => g.id !== goalId);
+    setGoals(remaining);
+    const next = remaining[0]?.id ?? null;
+    setSelectedGoalId(next);
+    setSelectedGoal(null);
+  }
+
+  // ── Render ──
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "320px minmax(0, 1fr)",
+        gridTemplateColumns: "300px minmax(0, 1fr)",
         gap: 20,
-        alignItems: "stretch",
+        alignItems: "start",
       }}
     >
+      {/* ── Sidebar: goal list ── */}
       <aside
         style={{
           border: "1px solid var(--line)",
@@ -250,16 +485,20 @@ export function GoalsWorkspace() {
           background: "rgba(255, 255, 255, 0.78)",
           padding: 20,
           minHeight: 640,
+          position: "sticky",
+          top: 24,
         }}
       >
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Goals</div>
-          <div style={{ color: "var(--muted)", fontSize: 13 }}>Goal overview and selection</div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Goals</div>
+          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+            {goals.length} goal{goals.length !== 1 ? "s" : ""}
+          </div>
         </div>
 
-        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 8 }}>
           {loadingGoals ? (
-            <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading goals...</div>
+            <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading...</div>
           ) : goals.length === 0 ? (
             <div
               style={{
@@ -268,9 +507,10 @@ export function GoalsWorkspace() {
                 border: "1px dashed var(--line)",
                 color: "var(--muted)",
                 lineHeight: 1.7,
+                fontSize: 13,
               }}
             >
-              No goals found yet.
+              No goals yet.
             </div>
           ) : (
             goals.map((goal) => {
@@ -282,22 +522,31 @@ export function GoalsWorkspace() {
                   onClick={() => setSelectedGoalId(goal.id)}
                   style={{
                     textAlign: "left",
-                    padding: 14,
-                    borderRadius: 16,
-                    border: selected ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    padding: "12px 14px",
+                    borderRadius: 14,
+                    border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
                     background: selected ? "rgba(15, 118, 110, 0.08)" : "var(--panel)",
                     cursor: "pointer",
                     display: "grid",
-                    gap: 8,
+                    gap: 4,
                   }}
                 >
-                  <div style={{ fontWeight: 700 }}>{goal.title}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{goal.status}</div>
-                  {goal.description ? (
-                    <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.6 }}>
-                      {goal.description}
-                    </div>
-                  ) : null}
+                  <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.4 }}>{goal.title}</div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        borderRadius: 20,
+                        background: goal.status === "active" ? "rgba(15, 118, 110, 0.12)" : "rgba(0,0,0,0.06)",
+                        color: goal.status === "active" ? "var(--accent)" : "var(--muted)",
+                        fontWeight: 600,
+                        letterSpacing: "0.03em",
+                      }}
+                    >
+                      {goal.status}
+                    </span>
+                  </div>
                 </button>
               );
             })
@@ -305,93 +554,53 @@ export function GoalsWorkspace() {
         </div>
       </aside>
 
+      {/* ── Main: editor ── */}
       <section
         style={{
           border: "1px solid var(--line)",
           borderRadius: 24,
           background: "rgba(255, 255, 255, 0.78)",
-          padding: 20,
+          padding: 24,
           minHeight: 640,
-          display: "grid",
-          gap: 16,
         }}
       >
-        <header style={{ display: "grid", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>
-                {selectedGoalSummary?.title ?? "Select a goal"}
-              </div>
-              <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                {selectedGoalSummary
-                  ? `Status: ${selectedGoalSummary.status} · Updated ${new Date(selectedGoalSummary.updated_at).toLocaleString()}`
-                  : "Pick a goal to inspect its subjects, issues, tasks, and events"}
-              </div>
-            </div>
+        <header style={{ marginBottom: 20, display: "grid", gap: 4 }}>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>
+            {selectedGoalSummary?.title ?? "Select a goal"}
           </div>
-          {loadingDetail ? <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading goal detail...</div> : null}
-          {error ? (
-            <div
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid rgba(140, 75, 45, 0.24)",
-                background: "rgba(140, 75, 45, 0.08)",
-                color: "var(--accent-2)",
-              }}
-            >
-              {error}
-            </div>
-          ) : null}
+          <div style={{ color: "var(--muted)", fontSize: 13 }}>
+            {selectedGoalSummary
+              ? `Updated ${new Date(selectedGoalSummary.updated_at).toLocaleString()}`
+              : "Pick a goal from the list to edit it"}
+          </div>
         </header>
 
-        {selectedGoal ? (
-          <div style={{ display: "grid", gap: 16 }}>
-            <section
-              style={{
-                border: "1px solid var(--line)",
-                borderRadius: 20,
-                padding: 16,
-                background: "rgba(247, 245, 240, 0.56)",
-                display: "grid",
-                gap: 10,
-              }}
-            >
-              <div style={{ fontSize: 16, fontWeight: 700 }}>Goal summary</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--muted)", fontSize: 13 }}>
-                <span>Status: {selectedGoal.goal.status}</span>
-                <span>Subjects: {selectedGoal.subjects.length}</span>
-                <span>Issues: {selectedGoal.issues.length}</span>
-                <span>Tasks: {selectedGoal.tasks.length}</span>
-                <span>Events: {selectedGoal.events.length}</span>
-              </div>
-              {selectedGoal.goal.description ? (
-                <div style={{ lineHeight: 1.8 }}>{selectedGoal.goal.description}</div>
-              ) : null}
-            </section>
-
-            <section style={{ display: "grid", gap: 16 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Subjects</div>
-                <RenderRecordList items={selectedGoal.subjects} />
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Issues</div>
-                <RenderRecordList items={selectedGoal.issues} />
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Tasks</div>
-                <RenderRecordList items={selectedGoal.tasks} />
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 10 }}>Events</div>
-                <RenderRecordList items={selectedGoal.events} />
-              </div>
-            </section>
+        {loadingDetail ? (
+          <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading goal...</div>
+        ) : error ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              border: "1px solid rgba(140, 75, 45, 0.24)",
+              background: "rgba(140, 75, 45, 0.08)",
+              color: "var(--accent-2)",
+              fontSize: 13,
+            }}
+          >
+            {error}
           </div>
+        ) : selectedGoal && sessionToken ? (
+          <GoalEditor
+            key={selectedGoal.goal.id}
+            detail={selectedGoal}
+            sessionToken={sessionToken}
+            onSaved={handleSaved}
+            onDeleted={handleDeleted}
+          />
         ) : loadingGoals ? null : (
-          <div style={{ color: "var(--muted)", lineHeight: 1.8 }}>
-            No goal selected yet.
+          <div style={{ color: "var(--muted)", lineHeight: 1.8, fontSize: 14 }}>
+            No goal selected.
           </div>
         )}
       </section>
