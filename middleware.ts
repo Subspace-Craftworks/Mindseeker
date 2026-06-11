@@ -42,10 +42,10 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const protectedRoute = pathname.startsWith("/chat") || pathname.startsWith("/goals");
+  const protectedRoute = pathname === "/";
 
   if (pathname === "/login" && user) {
-    const redirectResponse = NextResponse.redirect(new URL("/chat", request.url));
+    const redirectResponse = NextResponse.redirect(new URL("/", request.url));
     applyCookies(response, redirectResponse);
     return redirectResponse;
   }
@@ -56,15 +56,9 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  if (pathname === "/" && user) {
-    const redirectResponse = NextResponse.redirect(new URL("/chat", request.url));
-    applyCookies(response, redirectResponse);
-    return redirectResponse;
-  }
-
   return response;
 }
 
 export const config = {
-  matcher: ["/", "/login", "/chat/:path*", "/goals/:path*"],
+  matcher: ["/", "/login"],
 };

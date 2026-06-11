@@ -5,10 +5,10 @@ import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/utils/env"
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/chat";
+  const next = url.searchParams.get("next") ?? "/";
 
   if (!next.startsWith("/")) {
-    return NextResponse.redirect(new URL("/chat", url.origin));
+    return NextResponse.redirect(new URL("/", url.origin));
   }
 
   const response = NextResponse.redirect(new URL(next, url.origin));

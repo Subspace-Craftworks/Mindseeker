@@ -9,7 +9,7 @@ export default async function LoginPage({
 }) {
   const user = await getCurrentUser();
   if (user) {
-    redirect("/chat");
+    redirect("/");
   }
 
   const params = (await searchParams) ?? {};
