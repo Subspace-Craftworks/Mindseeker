@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { GoalEditor, type GoalDetail, type GoalRecord } from "./goal-editor";
 
 type ChatThread = {
   id: string;
@@ -81,6 +82,12 @@ type ContextMap = {
 type ContextMapResponse = {
   ok: boolean;
   data: ContextMap;
+  error: { code: string; message: string } | null;
+};
+
+type GoalDetailResponse = {
+  ok: boolean;
+  data: GoalDetail | null;
   error: { code: string; message: string } | null;
 };
 
@@ -319,19 +326,30 @@ function ContextGoalBlock({
   goal,
   selected,
   isLatest,
+  isActiveEditor,
+  onClick,
 }: {
   goal: ContextMap["goals"][number];
   selected?: boolean;
   isLatest?: boolean;
+  isActiveEditor?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       style={{
         display: "grid",
         gap: 4,
         paddingBottom: 8,
         borderBottom: "1px solid var(--line-light)",
-        opacity: selected ? 1 : 0.8,
+        opacity: selected || isActiveEditor ? 1 : 0.8,
+        background: "transparent",
+        border: "none",
+        textAlign: "left",
+        cursor: "pointer",
+        width: "100%",
       }}
     >
       <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.04 }}>
@@ -343,9 +361,10 @@ function ContextGoalBlock({
             fontSize: 12,
             lineHeight: 1.4,
             fontWeight: 600,
-            padding: selected ? "2px 6px" : 0,
+            padding: selected || isActiveEditor ? "4px 8px" : 0,
             borderRadius: "var(--radius-sm)",
-            background: selected ? "var(--line-light)" : "transparent",
+            background: isActiveEditor ? "rgba(15, 118, 110, 0.08)" : selected ? "var(--line-light)" : "transparent",
+            border: isActiveEditor ? "1px solid var(--accent)" : "1px solid transparent",
             color: goal.status === "inactive" ? "var(--muted)" : "inherit",
           }}
         >
@@ -360,11 +379,11 @@ function ContextGoalBlock({
           </div>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
-export function ChatWorkspace() {
+export function UnifiedWorkspace() {
   const router = useRouter();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [contextMap, setContextMap] = useState<ContextMap | null>(null);
@@ -378,6 +397,11 @@ export function ChatWorkspace() {
   const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Goal Editor states
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [selectedGoalDetail, setSelectedGoalDetail] = useState<GoalDetail | null>(null);
+  const [loadingGoalDetail, setLoadingGoalDetail] = useState(false);
 
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
@@ -548,6 +572,50 @@ export function ChatWorkspace() {
       cancelled = true;
     };
   }, [activeThreadId, sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken || !selectedGoalId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadGoalDetail() {
+      setLoadingGoalDetail(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/goals/${selectedGoalId}`, {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+        const payload = (await response.json()) as GoalDetailResponse;
+        if (!response.ok || !payload.ok || !payload.data) {
+          throw new Error(payload.error?.message ?? `Failed to load goal details (${response.status})`);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setSelectedGoalDetail(payload.data);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "Failed to load goal details");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingGoalDetail(false);
+        }
+      }
+    }
+
+    void loadGoalDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGoalId, sessionToken]);
 
   const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : messagesByThread.draft ?? [];
 
@@ -915,6 +983,23 @@ export function ChatWorkspace() {
     void refreshContextMap(null).catch(() => undefined);
   }
 
+  function handleGoalSaved(updated: GoalRecord) {
+    // Refresh context map so that Goal list is updated
+    void refreshContextMap().catch(() => undefined);
+    // Optimistically update details
+    if (selectedGoalDetail && selectedGoalDetail.goal.id === updated.id) {
+      setSelectedGoalDetail({ ...selectedGoalDetail, goal: updated });
+    }
+  }
+
+  function handleGoalDeleted(goalId: string) {
+    void refreshContextMap().catch(() => undefined);
+    if (selectedGoalId === goalId) {
+      setSelectedGoalId(null);
+      setSelectedGoalDetail(null);
+    }
+  }
+
   return (
     <div
       style={{
@@ -1057,7 +1142,59 @@ export function ChatWorkspace() {
           )}
         </div>
         </div>
-      </aside>      <section
+      </aside>
+
+      {/* ── Pane 2: Goal Editor (Middle) ── */}
+      <section
+        style={{
+          width: 400,
+          flexShrink: 0,
+          borderRight: "var(--pane-border)",
+          background: "var(--bg)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <header
+          style={{
+            padding: "12px 16px",
+            borderBottom: "var(--pane-border)",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
+            {selectedGoalDetail ? "Goal Editor" : "Inspector"}
+          </div>
+        </header>
+        <div style={{ flexGrow: 1, overflowY: "auto", padding: 16 }}>
+          {selectedGoalId ? (
+            loadingGoalDetail ? (
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading goal...</div>
+            ) : selectedGoalDetail && sessionToken ? (
+              <GoalEditor
+                key={selectedGoalDetail.goal.id}
+                detail={selectedGoalDetail}
+                sessionToken={sessionToken}
+                onSaved={handleGoalSaved}
+                onDeleted={handleGoalDeleted}
+              />
+            ) : (
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Failed to load goal.</div>
+            )
+          ) : (
+            <div style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}>
+              Select a goal from Context Map to edit details.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Pane 3: Chat (Right) ── */}
+      <section
         style={{
           flexGrow: 1,
           display: "flex",
@@ -1111,14 +1248,15 @@ export function ChatWorkspace() {
               <article
                 key={message.id}
                 style={{
-                  justifySelf: message.role === "user" ? "end" : "start",
-                  maxWidth: "80%",
-                  padding: "12px 14px",
-                  borderRadius: 18,
-                  background: message.role === "user" ? "var(--accent)" : "white",
-                  color: message.role === "user" ? "white" : "var(--text)",
-                  border: message.role === "user" ? "none" : "1px solid var(--line)",
-                  boxShadow: "0 10px 24px rgba(23, 33, 43, 0.06)",
+                  alignSelf: message.role === "user" ? "flex-end" : "flex-start",
+                  maxWidth: message.role === "user" ? "80%" : "100%",
+                  width: message.role === "assistant" ? "100%" : "auto",
+                  padding: message.role === "user" ? "10px 14px" : "12px 0",
+                  borderRadius: message.role === "user" ? "var(--radius-md)" : 0,
+                  background: message.role === "user" ? "var(--text)" : "transparent",
+                  color: message.role === "user" ? "var(--bg)" : "var(--text)",
+                  border: "none",
+                  boxShadow: "none",
                   lineHeight: 1.7,
                 }}
               >

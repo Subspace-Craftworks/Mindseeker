@@ -48,8 +48,6 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           </div>
         </div>
         <nav style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/chat" style={{ fontSize: 13, fontWeight: 600 }}>Chat</Link>
-          <Link href="/goals" style={{ fontSize: 13, fontWeight: 600 }}>Goals</Link>
           <button
             type="button"
             onClick={handleSignOut}

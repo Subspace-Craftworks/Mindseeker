@@ -1,26 +1,22 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import { AppShell } from "@/components/layout/app-shell";
+import { UnifiedWorkspace } from "@/components/features/workspace/unified-workspace";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  if (user) {
-    redirect("/chat");
+  
+  if (!user) {
+    redirect("/login");
   }
 
   return (
-    <main style={{ padding: 32, maxWidth: 960, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 40, marginBottom: 12 }}>Mindseeker</h1>
-      <p style={{ color: "var(--muted)", lineHeight: 1.7, maxWidth: 720 }}>
-        Supabase Auth, Vercel FE/BFF, and Dify integration scaffold.
-      </p>
-      <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
-        <Link href="/login">Login</Link>
-        <Link href="/chat">Chat</Link>
-        <Link href="/goals">Goals</Link>
-      </div>
-    </main>
+    <AppShell userEmail={user.email}>
+      <main style={{ padding: 0, height: "100%", width: "100%" }}>
+        <UnifiedWorkspace />
+      </main>
+    </AppShell>
   );
 }
