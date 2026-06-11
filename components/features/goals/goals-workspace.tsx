@@ -513,41 +513,47 @@ export function GoalsWorkspace() {
               No goals yet.
             </div>
           ) : (
-            goals.map((goal) => {
-              const selected = goal.id === selectedGoalId;
+            (["active", "inactive"] as const).map((groupStatus) => {
+              const group = goals.filter((g) => g.status === groupStatus);
+              if (group.length === 0) return null;
               return (
-                <button
-                  key={goal.id}
-                  type="button"
-                  onClick={() => setSelectedGoalId(goal.id)}
-                  style={{
-                    textAlign: "left",
-                    padding: "12px 14px",
-                    borderRadius: 14,
-                    border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-                    background: selected ? "rgba(15, 118, 110, 0.08)" : "var(--panel)",
-                    cursor: "pointer",
-                    display: "grid",
-                    gap: 4,
-                  }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.4 }}>{goal.title}</div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        padding: "2px 8px",
-                        borderRadius: 20,
-                        background: goal.status === "active" ? "rgba(15, 118, 110, 0.12)" : "rgba(0,0,0,0.06)",
-                        color: goal.status === "active" ? "var(--accent)" : "var(--muted)",
-                        fontWeight: 600,
-                        letterSpacing: "0.03em",
-                      }}
-                    >
-                      {goal.status}
-                    </span>
+                <div key={groupStatus}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.07em",
+                      marginBottom: 6,
+                      marginTop: groupStatus === "inactive" ? 10 : 0,
+                    }}
+                  >
+                    {groupStatus}
                   </div>
-                </button>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {group.map((goal) => {
+                      const selected = goal.id === selectedGoalId;
+                      return (
+                        <button
+                          key={goal.id}
+                          type="button"
+                          onClick={() => setSelectedGoalId(goal.id)}
+                          style={{
+                            textAlign: "left",
+                            padding: "10px 14px",
+                            borderRadius: 14,
+                            border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+                            background: selected ? "rgba(15, 118, 110, 0.08)" : "var(--panel)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.4 }}>{goal.title}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })
           )}
