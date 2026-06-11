@@ -42,7 +42,10 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.02em" }}>Mindseeker</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img src="/logo.png" alt="Mindseeker Logo" style={{ width: 20, height: 20, objectFit: "contain", borderRadius: 4 }} />
+            <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.02em" }}>Mindseeker</div>
+          </div>
           <div style={{ color: "var(--muted)", fontSize: 12 }}>
             {userEmail || "Signed in"}
           </div>

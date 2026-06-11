@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -340,44 +340,34 @@ function ContextGoalBlock({
       type="button"
       onClick={onClick}
       style={{
-        display: "grid",
-        gap: 4,
-        paddingBottom: 8,
-        borderBottom: "1px solid var(--line-light)",
-        opacity: selected || isActiveEditor ? 1 : 0.8,
-        background: "transparent",
-        border: "none",
         textAlign: "left",
+        padding: "8px 12px",
+        borderRadius: "var(--radius-md)",
+        border: "none",
+        background: isActiveEditor ? "var(--accent)" : selected ? "var(--panel-2)" : "transparent",
+        color: isActiveEditor ? "white" : goal.status === "inactive" ? "var(--muted)" : "inherit",
+        opacity: selected || isActiveEditor ? 1 : 0.75,
         cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
         width: "100%",
+        transition: "all 0.2s ease-in-out",
       }}
     >
-      <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.04 }}>
-        Goal:
-      </div>
-      <div style={{ display: "grid", gap: 6, paddingLeft: 4 }}>
+      <div style={{ width: "100%", display: "flex", alignItems: "center" }}>
         <div
           style={{
-            fontSize: 12,
+            flexGrow: 1,
+            fontSize: 13,
             lineHeight: 1.4,
-            fontWeight: 600,
-            padding: selected || isActiveEditor ? "4px 8px" : 0,
-            borderRadius: "var(--radius-sm)",
-            background: isActiveEditor ? "rgba(15, 118, 110, 0.08)" : selected ? "var(--line-light)" : "transparent",
-            border: isActiveEditor ? "1px solid var(--accent)" : "1px solid transparent",
-            color: goal.status === "inactive" ? "var(--muted)" : "inherit",
+            fontWeight: selected || isActiveEditor ? 600 : 400,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {goal.title}{goal.status === "inactive" ? " (Inactive)" : ""}
         </div>
-        {isLatest && (
-          <div style={{ display: "grid", gap: 4, paddingLeft: 6 }}>
-            <ContextLine label="Sub" items={goal.subjects.map((item) => item.title)} />
-            <ContextLine label="Iss" items={goal.issues.map((item) => item.title)} />
-            <ContextLine label="Tsk" items={goal.tasks.map((item) => item.title)} />
-            <ContextLine label="Evt" items={goal.events.map((item) => item.title)} />
-          </div>
-        )}
       </div>
     </button>
   );
@@ -402,6 +392,8 @@ export function UnifiedWorkspace() {
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [selectedGoalDetail, setSelectedGoalDetail] = useState<GoalDetail | null>(null);
   const [loadingGoalDetail, setLoadingGoalDetail] = useState(false);
+
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
@@ -618,6 +610,12 @@ export function UnifiedWorkspace() {
   }, [selectedGoalId, sessionToken]);
 
   const activeMessages = activeThreadId ? messagesByThread[activeThreadId] ?? [] : messagesByThread.draft ?? [];
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [activeMessages, sending]);
 
   useEffect(() => {
     if (sessionToken && activeThreadId === null) {
@@ -1034,7 +1032,7 @@ export function UnifiedWorkspace() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)" }}>
-              Context Map
+              Goals
             </div>
             <label style={{ fontSize: 10, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
@@ -1109,39 +1107,46 @@ export function UnifiedWorkspace() {
                     onClick={() => setActiveThreadId(thread.id)}
                     style={{
                       textAlign: "left",
-                      padding: "8px",
-                      borderRadius: "var(--radius-sm)",
-                      border: selected ? "1px solid var(--accent)" : "1px solid transparent",
-                      background: selected ? "rgba(15, 118, 110, 0.08)" : "transparent",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-md)",
+                      border: "none",
+                      background: selected ? "var(--accent)" : "transparent",
+                      color: selected ? "white" : "inherit",
+                      opacity: selected ? 1 : 0.75,
                       cursor: "pointer",
                       display: "flex",
-                      alignItems: "center",
-                      gap: 8,
+                      flexDirection: "column",
+                      width: "100%",
+                      transition: "all 0.2s ease-in-out",
                     }}
                   >
-                    <div style={{ flexGrow: 1, fontWeight: selected ? 600 : 400, fontSize: 12, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {thread.title || "New conversation"}
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleDeleteThread(thread.id).catch((deleteError) => {
-                          setError(deleteError instanceof Error ? deleteError.message : "Failed to delete thread");
-                        });
-                      }}
-                      title="Delete thread"
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: "2px 4px",
-                        cursor: "pointer",
-                        color: "var(--muted)",
-                        fontSize: 12,
-                      }}
-                    >
-                      ×
+                    <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flexGrow: 1, fontWeight: selected ? 600 : 400, fontSize: 13, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {thread.title || "New conversation"}
+                      </div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDeleteThread(thread.id).catch((deleteError) => {
+                            setError(deleteError instanceof Error ? deleteError.message : "Failed to delete thread");
+                          });
+                        }}
+                        title="Delete thread"
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: "2px 4px",
+                          cursor: "pointer",
+                          color: selected ? "rgba(255,255,255,0.7)" : "var(--muted)",
+                          fontSize: 14,
+                          fontWeight: 300,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </div>
                     </div>
                   </button>
               );
@@ -1237,6 +1242,7 @@ export function UnifiedWorkspace() {
         </header>
 
         <div
+          ref={chatScrollRef}
           style={{
             flexGrow: 1,
             overflowY: "auto",

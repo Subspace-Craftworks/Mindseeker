@@ -44,43 +44,204 @@ function summarizeRecord(record: Record<string, unknown>) {
     .map(([k, v]) => [k, String(v).trim()] as [string, string]);
 }
 
-function RenderRecordList({ items }: { items: Record<string, unknown>[] }) {
+function RecordListItem({
+  item,
+  index,
+  table,
+  sessionToken,
+  onRefresh,
+}: {
+  item: Record<string, unknown>;
+  index: number;
+  table: string;
+  sessionToken: string;
+  onRefresh: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const summary = summarizeRecord(item);
+  const titlePair = summary.find(([label]) => label === "title" || label === "name");
+  const title = titlePair ? titlePair[1] : item.id ? String(item.id) : `Item ${index + 1}`;
+
+  return (
+    <div style={{ display: "grid" }}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          textAlign: "left",
+          padding: "4px 8px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontSize: 13,
+          color: expanded ? "var(--text)" : "var(--muted)",
+          fontWeight: expanded ? 600 : 400,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          borderRadius: "var(--radius-sm)",
+          transition: "all 0.2s",
+        }}
+        onMouseEnter={(e) => {
+          if (!expanded) e.currentTarget.style.color = "var(--text)";
+        }}
+        onMouseLeave={(e) => {
+          if (!expanded) e.currentTarget.style.color = "var(--muted)";
+        }}
+      >
+        <span style={{ fontSize: 9, opacity: 0.6, width: 12, textAlign: "center" }}>
+          {expanded ? "▼" : "▶"}
+        </span>
+        {title}
+      </button>
+      
+      {expanded && (
+        <div
+          style={{
+            marginTop: 6,
+            marginLeft: 24,
+            marginBottom: 8,
+            padding: 10,
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--line-light)",
+            background: "var(--panel)",
+            display: "grid",
+            gap: 6,
+            boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+          }}
+        >
+          {summary.length === 0 ? (
+            <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 11 }}>
+              {JSON.stringify(item, null, 2)}
+            </pre>
+          ) : (
+            summary.map(([label, value]) => (
+              <div key={label} style={{ display: "grid", gap: 2 }}>
+                <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.5 }}>{value}</div>
+              </div>
+            ))
+          )}
+
+          {/* Action buttons */}
+          {Boolean(item.id) && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, borderTop: "1px solid var(--line-light)", paddingTop: 8 }}>
+              <button
+                type="button"
+                disabled={updating}
+                onClick={async () => {
+                  if (!window.confirm("Delete this record?")) return;
+                  setUpdating(true);
+                  setErrorMsg(null);
+                  try {
+                    const res = await fetch(`/api/records/${table}/${item.id}`, {
+                      method: "DELETE",
+                      headers: { Authorization: `Bearer ${sessionToken}` },
+                    });
+                    if (!res.ok) throw new Error("Delete failed");
+                    onRefresh();
+                  } catch (e) {
+                    setErrorMsg("Failed to delete");
+                    setUpdating(false);
+                  }
+                }}
+                style={{
+                  padding: "4px 8px",
+                  fontSize: 11,
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid rgba(180, 60, 40, 0.35)",
+                  background: "transparent",
+                  color: "rgba(180, 60, 40, 0.85)",
+                  cursor: updating ? "not-allowed" : "pointer",
+                }}
+              >
+                Delete
+              </button>
+
+              <div style={{ display: "flex", gap: 4 }}>
+                {(["active", "inactive"] as const).map((s) => {
+                  const currentStatus = (item.status as string) || "active";
+                  const isSelected = currentStatus === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      disabled={updating || isSelected}
+                      onClick={async () => {
+                        setUpdating(true);
+                        setErrorMsg(null);
+                        try {
+                          const res = await fetch(`/api/records/${table}/${item.id}`, {
+                            method: "PATCH",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${sessionToken}`,
+                            },
+                            body: JSON.stringify({ status: s }),
+                          });
+                          if (!res.ok) throw new Error("Update failed");
+                          onRefresh();
+                        } catch (e) {
+                          setErrorMsg("Failed to update status");
+                        } finally {
+                          setUpdating(false);
+                        }
+                      }}
+                      style={{
+                        padding: "4px 8px",
+                        fontSize: 11,
+                        borderRadius: "var(--radius-sm)",
+                        border: isSelected ? "1px solid var(--accent)" : "1px solid var(--line)",
+                        background: isSelected ? "rgba(15, 118, 110, 0.10)" : "transparent",
+                        color: isSelected ? "var(--accent)" : "var(--muted)",
+                        cursor: updating || isSelected ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {errorMsg && <div style={{ color: "var(--accent-2)", fontSize: 11 }}>{errorMsg}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RenderRecordList({
+  items,
+  table,
+  sessionToken,
+  onRefresh,
+}: {
+  items: Record<string, unknown>[];
+  table: string;
+  sessionToken: string;
+  onRefresh: () => void;
+}) {
   if (items.length === 0) {
-    return <div style={{ color: "var(--muted)", fontSize: 13 }}>None</div>;
+    return <div style={{ color: "var(--muted)", fontSize: 13, paddingLeft: 8 }}>None</div>;
   }
   return (
-    <div style={{ display: "grid", gap: 8 }}>
-      {items.slice(0, 5).map((item, index) => {
-        const summary = summarizeRecord(item);
-        return (
-          <div
-            key={String(item.id ?? `${index}`)}
-            style={{
-              padding: 10,
-              borderRadius: "var(--radius-sm)",
-              border: "var(--pane-border)",
-              background: "var(--bg)",
-              display: "grid",
-              gap: 4,
-            }}
-          >
-            {summary.length === 0 ? (
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 11 }}>
-                {JSON.stringify(item, null, 2)}
-              </pre>
-            ) : (
-              summary.map(([label, value]) => (
-                <div key={label} style={{ display: "grid", gap: 2 }}>
-                  <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    {label}
-                  </div>
-                  <div style={{ fontSize: 12, lineHeight: 1.5 }}>{value}</div>
-                </div>
-              ))
-            )}
-          </div>
-        );
-      })}
+    <div style={{ display: "grid", gap: 2 }}>
+      {items.slice(0, 5).map((item, index) => (
+        <RecordListItem
+          key={String(item.id ?? `${index}`)}
+          item={item}
+          index={index}
+          table={table}
+          sessionToken={sessionToken}
+          onRefresh={onRefresh}
+        />
+      ))}
     </div>
   );
 }
@@ -307,12 +468,12 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
 
         {(
           [
-            { label: "Subjects", items: detail.subjects },
-            { label: "Issues", items: detail.issues },
-            { label: "Tasks", items: detail.tasks },
-            { label: "Events", items: detail.events },
+            { label: "Subjects", table: "subjects", items: detail.subjects },
+            { label: "Issues", table: "issues", items: detail.issues },
+            { label: "Tasks", table: "tasks", items: detail.tasks },
+            { label: "Events", table: "events", items: detail.events },
           ] as const
-        ).map(({ label, items }) => (
+        ).map(({ label, table, items }) => (
           <div key={label}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
               {label}
@@ -320,7 +481,16 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
                 ({items.length})
               </span>
             </div>
-            <RenderRecordList items={items as Record<string, unknown>[]} />
+            <RenderRecordList
+              items={items as Record<string, unknown>[]}
+              table={table}
+              sessionToken={sessionToken}
+              onRefresh={() => {
+                // To trigger a re-fetch, we can just call onSaved with current goal
+                // which will cause parent to refreshContextMap and reload goal details
+                onSaved(detail.goal);
+              }}
+            />
           </div>
         ))}
       </div>

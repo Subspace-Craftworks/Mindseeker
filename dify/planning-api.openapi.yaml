@@ -29,6 +29,7 @@ paths:
                 value:
                   action: list_goals
                   params:
+                    user_id: 678ea7b6-e79e-4f2c-ae35-4af35b650071
                     status: active
                     limit: 20
               createGoal:

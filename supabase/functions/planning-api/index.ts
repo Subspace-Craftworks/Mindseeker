@@ -158,7 +158,10 @@ function getParams(body: JsonObject): JsonObject {
 }
 
 async function listGoals(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
-  let query = supabase.from("goals").select("*").order("updated_at", { ascending: false });
+  const userId = cleanString(params.user_id);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
+
+  let query = supabase.from("goals").select("*").eq("user_id", userId).order("updated_at", { ascending: false });
   const status = cleanString(params.status);
   if (status) query = query.eq("status", status);
   const { data, error } = await query.limit(toInt(params.limit, 20, 1, 100));
@@ -268,7 +271,10 @@ async function completeGoal(supabase: ReturnType<typeof getSupabaseClient>, para
 }
 
 async function listSubjects(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
-  let query = supabase.from("subjects").select("*").order("updated_at", { ascending: false });
+  const userId = cleanString(params.user_id);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
+
+  let query = supabase.from("subjects").select("*").eq("user_id", userId).order("updated_at", { ascending: false });
   const goalId = cleanString(params.goal_id);
   const status = cleanString(params.status);
   const priority = cleanString(params.priority);
@@ -339,7 +345,10 @@ async function updateSubject(supabase: ReturnType<typeof getSupabaseClient>, par
 }
 
 async function listIssues(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
-  let query = supabase.from("issues").select("*").order("updated_at", { ascending: false });
+  const userId = cleanString(params.user_id);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
+
+  let query = supabase.from("issues").select("*").eq("user_id", userId).order("updated_at", { ascending: false });
   const goalId = cleanString(params.goal_id);
   const subjectId = cleanString(params.subject_id);
   const status = cleanString(params.status);
@@ -348,7 +357,7 @@ async function listIssues(supabase: ReturnType<typeof getSupabaseClient>, params
   if (status) query = query.eq("status", status);
   if (severity) query = query.eq("severity", severity);
   if (goalId) {
-    const subjectIdsResult = await supabase.from("subjects").select("id").eq("goal_id", goalId);
+    const subjectIdsResult = await supabase.from("subjects").select("id").eq("user_id", userId).eq("goal_id", goalId);
     if (subjectIdsResult.error) throw subjectIdsResult.error;
     const subjectIds = (subjectIdsResult.data ?? []).map((row) => row.id).filter(Boolean);
     query = subjectIds.length > 0 ? query.in("subject_id", subjectIds) : query.eq("subject_id", "__none__");
@@ -417,7 +426,10 @@ async function updateIssue(supabase: ReturnType<typeof getSupabaseClient>, param
 }
 
 async function listTasks(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
-  let query = supabase.from("tasks").select("*").order("updated_at", { ascending: false });
+  const userId = cleanString(params.user_id);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
+
+  let query = supabase.from("tasks").select("*").eq("user_id", userId).order("updated_at", { ascending: false });
   const goalId = cleanString(params.goal_id);
   const subjectId = cleanString(params.subject_id);
   const issueId = cleanString(params.issue_id);
@@ -426,7 +438,7 @@ async function listTasks(supabase: ReturnType<typeof getSupabaseClient>, params:
   if (issueId) query = query.eq("issue_id", issueId);
   if (status) query = query.eq("status", status);
   if (goalId) {
-    const subjectIdsResult = await supabase.from("subjects").select("id").eq("goal_id", goalId);
+    const subjectIdsResult = await supabase.from("subjects").select("id").eq("user_id", userId).eq("goal_id", goalId);
     if (subjectIdsResult.error) throw subjectIdsResult.error;
     const subjectIds = (subjectIdsResult.data ?? []).map((row) => row.id).filter(Boolean);
     query = subjectIds.length > 0 ? query.in("subject_id", subjectIds) : query.eq("subject_id", "__none__");
@@ -535,7 +547,10 @@ async function createEvent(supabase: ReturnType<typeof getSupabaseClient>, param
 }
 
 async function listEvents(supabase: ReturnType<typeof getSupabaseClient>, params: JsonObject) {
-  let query = supabase.from("events").select("*").order("occurred_at", { ascending: false });
+  const userId = cleanString(params.user_id);
+  if (!userId) return fail("VALIDATION_ERROR", "user_id is required", 400);
+
+  let query = supabase.from("events").select("*").eq("user_id", userId).order("occurred_at", { ascending: false });
   const goalId = cleanString(params.goal_id);
   const subjectId = cleanString(params.subject_id);
   const issueId = cleanString(params.issue_id);

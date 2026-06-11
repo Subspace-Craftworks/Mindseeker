@@ -1,16 +1,16 @@
 :root {
   color-scheme: light;
-  --bg: #f7f5f0;
+  --bg: #f4f5f7;
   --panel: #ffffff;
-  --panel-2: #f1ede6;
-  --text: #17212b;
-  --muted: #617081;
-  --accent: #0f766e;
-  --accent-2: #8c4b2d;
-  --line: rgba(23, 33, 43, 0.16);
-  --line-light: rgba(23, 33, 43, 0.08);
-  --radius-sm: 4px;
-  --radius-md: 6px;
+  --panel-2: #e9ecef;
+  --text: #1e293b;
+  --muted: #64748b;
+  --accent: #334155;
+  --accent-2: #94a3b8;
+  --line: rgba(30, 41, 59, 0.12);
+  --line-light: rgba(30, 41, 59, 0.06);
+  --radius-sm: 6px;
+  --radius-md: 10px;
   --pane-border: 1px solid var(--line);
 }
 
