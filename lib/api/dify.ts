@@ -1,4 +1,4 @@
-import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/env";
+import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/utils/env";
 
 type ChatRequest = {
   message: string;

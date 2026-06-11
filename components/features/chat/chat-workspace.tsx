@@ -21,6 +21,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  thought?: string;
   createdAt: string;
 };
 
@@ -60,6 +61,7 @@ type ContextMap = {
   goal: {
     id: string;
     title: string;
+    status: string;
     subjects: { title: string }[];
     issues: { title: string }[];
     tasks: { title: string }[];
@@ -68,6 +70,7 @@ type ContextMap = {
   goals: {
     id: string;
     title: string;
+    status: string;
     subjects: { title: string }[];
     issues: { title: string }[];
     tasks: { title: string }[];
@@ -88,6 +91,11 @@ type ChatStreamEvent =
       conversationId?: string;
       messageId?: string;
       taskId?: string;
+    }
+  | {
+      type: "thought";
+      thought: string;
+      conversationId?: string;
     }
   | {
       type: "done";
@@ -310,9 +318,11 @@ function ContextLine({ label, items }: { label: string; items: string[] }) {
 function ContextGoalBlock({
   goal,
   selected,
+  isLatest,
 }: {
   goal: ContextMap["goals"][number];
   selected?: boolean;
+  isLatest?: boolean;
 }) {
   return (
     <div
@@ -336,16 +346,19 @@ function ContextGoalBlock({
             padding: selected ? "4px 8px" : 0,
             borderRadius: 10,
             background: selected ? "rgba(15, 118, 110, 0.08)" : "transparent",
+            color: goal.status === "inactive" ? "var(--muted)" : "inherit",
           }}
         >
-          ・{goal.title}
+          ・{goal.title}{goal.status === "inactive" ? " (Inactive)" : ""}
         </div>
-        <div style={{ display: "grid", gap: 8, paddingLeft: 10 }}>
-          <ContextLine label="Subject" items={goal.subjects.map((item) => item.title)} />
-          <ContextLine label="Issue" items={goal.issues.map((item) => item.title)} />
-          <ContextLine label="Task" items={goal.tasks.map((item) => item.title)} />
-          <ContextLine label="Event" items={goal.events.map((item) => item.title)} />
-        </div>
+        {isLatest && (
+          <div style={{ display: "grid", gap: 8, paddingLeft: 10 }}>
+            <ContextLine label="Subject" items={goal.subjects.map((item) => item.title)} />
+            <ContextLine label="Issue" items={goal.issues.map((item) => item.title)} />
+            <ContextLine label="Task" items={goal.tasks.map((item) => item.title)} />
+            <ContextLine label="Event" items={goal.events.map((item) => item.title)} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -355,6 +368,7 @@ export function ChatWorkspace() {
   const router = useRouter();
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [contextMap, setContextMap] = useState<ContextMap | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const [openingStatement, setOpeningStatement] = useState<string>("");
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -368,6 +382,11 @@ export function ChatWorkspace() {
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId) ?? null,
     [activeThreadId, threads],
+  );
+
+  const visibleGoals = useMemo(
+    () => contextMap?.goals.filter((g) => showInactive || g.status === "active") ?? [],
+    [contextMap, showInactive],
   );
 
   useEffect(() => {
@@ -736,10 +755,30 @@ export function ChatWorkspace() {
       if (contentType.includes("text/event-stream")) {
         let conversationId = activeThread?.dify_conversation_id ?? "";
         let assistantContent = "";
+        let assistantThought = "";
 
         await readChatStream(response, (event) => {
           if (event.type === "error") {
             throw new Error(event.message);
+          }
+
+          if (event.type === "thought") {
+            if (event.conversationId) {
+              conversationId = event.conversationId;
+            }
+            assistantThought += event.thought + "\n";
+            setMessagesByThread((current) => {
+              const currentMessages = current[threadKey] ?? [];
+              return {
+                ...current,
+                [threadKey]: currentMessages.map((currentMessage) =>
+                  currentMessage.id === assistantId
+                    ? { ...currentMessage, thought: assistantThought }
+                    : currentMessage,
+                ),
+              };
+            });
+            return;
           }
 
           if (event.type === "delta") {
@@ -905,18 +944,22 @@ export function ChatWorkspace() {
             gap: 8,
           }}
         >
-          <div style={{ fontSize: 12, letterSpacing: 0.08, textTransform: "uppercase", color: "var(--muted)" }}>
-            Context map
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 12, letterSpacing: 0.08, textTransform: "uppercase", color: "var(--muted)" }}>
+              Context map
+            </div>
+            <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+              Inactiveも表示
+            </label>
           </div>
           {contextMap ? (
             <div style={{ display: "grid", gap: 12, maxHeight: 240, overflow: "auto", paddingRight: 4 }}>
-              {contextMap.goal ? (
-                <ContextGoalBlock goal={contextMap.goal} selected />
-              ) : contextMap.goals.length === 0 ? (
+              {visibleGoals.length === 0 ? (
                 <div style={{ color: "var(--muted)", fontSize: 12 }}>-</div>
               ) : (
-                contextMap.goals.map((goal) => (
-                  <ContextGoalBlock key={goal.id} goal={goal} selected={contextMap.currentGoalId === goal.id} />
+                visibleGoals.map((goal) => (
+                  <ContextGoalBlock key={goal.id} goal={goal} selected={contextMap.currentGoalId === goal.id} isLatest={contextMap.currentGoalId === goal.id} />
                 ))
               )}
             </div>
@@ -1094,6 +1137,16 @@ export function ChatWorkspace() {
                   lineHeight: 1.7,
                 }}
               >
+                {message.thought && (
+                  <details style={{ marginBottom: message.content ? 12 : 0, color: "var(--muted)", fontSize: 13 }}>
+                    <summary style={{ cursor: "pointer", outline: "none", opacity: 0.8 }}>
+                      💭 Difyの思考プロセス
+                    </summary>
+                    <div style={{ marginTop: 8, padding: 12, background: "rgba(23, 33, 43, 0.04)", borderRadius: 12, whiteSpace: "pre-wrap" }}>
+                      {message.thought}
+                    </div>
+                  </details>
+                )}
                 {message.role === "assistant" ? (
                   <MarkdownMessage content={message.content} />
                 ) : (

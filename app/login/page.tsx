@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { LoginPanel } from "@/components/login-panel";
+import { LoginPanel } from "@/components/features/auth/login-panel";
 import { getCurrentUser } from "@/lib/supabase/server";
 
 export default async function LoginPage({

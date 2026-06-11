@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordAppError } from "@/lib/app-logs";
+import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
-import { getContextMap } from "@/lib/context-map";
+import { getContextMap } from "@/lib/db/context-map";
 
 export async function GET(req: NextRequest) {
   const routeName = "/api/context-map";
   const requestId = crypto.randomUUID();
   try {
     const { user } = await requireSupabaseUser(req);
-    const threadId = req.nextUrl.searchParams.get("thread_id");
-    const contextMap = await getContextMap(user.id, threadId);
+    const contextMap = await getContextMap(user.id);
     return NextResponse.json({ ok: true, data: contextMap, error: null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

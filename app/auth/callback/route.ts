@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/env";
+import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/utils/env";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);

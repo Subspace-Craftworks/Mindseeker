@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordAppError } from "@/lib/app-logs";
+import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
-import { listChatThreads } from "@/lib/chat-threads";
+import { listChatThreads } from "@/lib/db/chat-threads";
 
 export async function GET(req: NextRequest) {
   const routeName = "/api/chat/threads";

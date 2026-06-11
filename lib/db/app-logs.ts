@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getPublicSupabaseUrl, getSupabaseServiceRoleKey } from "@/lib/env";
+import { getPublicSupabaseUrl, getSupabaseServiceRoleKey } from "@/lib/utils/env";
 
 export type AppLogLevel = "error" | "warn" | "info";
 

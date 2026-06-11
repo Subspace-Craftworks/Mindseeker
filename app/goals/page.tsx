@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
-import { GoalsWorkspace } from "@/components/goals-workspace";
+import { AppShell } from "@/components/layout/app-shell";
+import { GoalsWorkspace } from "@/components/features/goals/goals-workspace";
 import { requireCurrentUser } from "@/lib/supabase/server";
 
 export default async function GoalsPage() {

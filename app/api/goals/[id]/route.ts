@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordAppError } from "@/lib/app-logs";
+import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
-import { getGoalDetail } from "@/lib/goals";
+import { getGoalDetail } from "@/lib/db/goals";
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const routeName = "/api/goals/[id]";

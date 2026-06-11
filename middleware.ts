@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/env";
+import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/utils/env";
 
 function applyCookies(source: NextResponse, target: NextResponse) {
   source.cookies.getAll().forEach((cookie) => {

@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/app-shell";
-import { ChatWorkspace } from "@/components/chat-workspace";
+import { AppShell } from "@/components/layout/app-shell";
+import { ChatWorkspace } from "@/components/features/chat/chat-workspace";
 import { requireCurrentUser } from "@/lib/supabase/server";
 
 export default async function ChatPage() {

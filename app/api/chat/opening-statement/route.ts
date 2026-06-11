@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordAppError } from "@/lib/app-logs";
+import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
-import { getAppParameters } from "@/lib/dify";
+import { getAppParameters } from "@/lib/api/dify";
 
 export async function GET(req: NextRequest) {
   const routeName = "/api/chat/opening-statement";

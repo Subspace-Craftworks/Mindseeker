@@ -1,8 +1,10 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
-import { recordAppError } from "@/lib/app-logs";
+import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
-import { upsertChatThread } from "@/lib/chat-threads";
-import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/env";
+import { upsertChatThread } from "@/lib/db/chat-threads";
+import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/utils/env";
 
 type StreamEvent =
   | {
@@ -11,6 +13,11 @@ type StreamEvent =
       conversationId?: string;
       messageId?: string;
       taskId?: string;
+    }
+  | {
+      type: "thought";
+      thought: string;
+      conversationId?: string;
     }
   | {
       type: "done";
@@ -78,9 +85,15 @@ function createReadableStreamFromResponse(response: Response, onChunk: (chunk: s
       try {
         const event = JSON.parse(data) as Record<string, unknown>;
         events.push(event);
+
+        if (event.event === "agent_thought" && typeof event.thought === "string" && event.thought) {
+          onChunk(JSON.stringify({ type: "thought", thought: event.thought }));
+          continue;
+        }
+
         const nextAnswer = event.answer;
         if (typeof nextAnswer === "string" && nextAnswer) {
-          onChunk(nextAnswer);
+          onChunk(JSON.stringify({ type: "delta", delta: nextAnswer }));
         }
       } catch {
         // Ignore malformed chunks and keep draining the stream.
@@ -107,9 +120,14 @@ function createReadableStreamFromResponse(response: Response, onChunk: (chunk: s
         try {
           const event = JSON.parse(buffer.replace(/^data:\s?/, "")) as Record<string, unknown>;
           events.push(event);
-          const nextAnswer = event.answer;
-          if (typeof nextAnswer === "string" && nextAnswer) {
-            onChunk(nextAnswer);
+
+          if (event.event === "agent_thought" && typeof event.thought === "string" && event.thought) {
+            onChunk(JSON.stringify({ type: "thought", thought: event.thought }));
+          } else {
+            const nextAnswer = event.answer;
+            if (typeof nextAnswer === "string" && nextAnswer) {
+              onChunk(JSON.stringify({ type: "delta", delta: nextAnswer }));
+            }
           }
         } catch {
           // Ignore leftover parse errors.
@@ -146,6 +164,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        inputs: {},
         query: message,
         response_mode: "streaming",
         conversation_id: conversationId || "",
@@ -193,17 +212,34 @@ export async function POST(req: NextRequest) {
               ),
             );
           } else {
-            const events = await createReadableStreamFromResponse(upstream, (chunk) => {
-              answer += chunk;
-              controller.enqueue(
-                encoder.encode(
-                  encodeSseEvent({
-                    type: "delta",
-                    delta: chunk,
-                    conversationId: upstreamConversationId || undefined,
-                  }),
-                ),
-              );
+            const events = await createReadableStreamFromResponse(upstream, (chunkStr) => {
+              try {
+                const chunkData = JSON.parse(chunkStr);
+                if (chunkData.type === "thought") {
+                  controller.enqueue(
+                    encoder.encode(
+                      encodeSseEvent({
+                        type: "thought",
+                        thought: chunkData.thought,
+                        conversationId: upstreamConversationId || undefined,
+                      }),
+                    ),
+                  );
+                } else if (chunkData.type === "delta") {
+                  answer += chunkData.delta;
+                  controller.enqueue(
+                    encoder.encode(
+                      encodeSseEvent({
+                        type: "delta",
+                        delta: chunkData.delta,
+                        conversationId: upstreamConversationId || undefined,
+                      }),
+                    ),
+                  );
+                }
+              } catch {
+                // Ignore parsing errors for internal chunk format
+              }
             });
 
             for (const event of events) {
@@ -272,6 +308,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (error) {

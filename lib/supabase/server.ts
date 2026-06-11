@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getPublicSupabaseUrl, getSupabaseServiceRoleKey } from "@/lib/env";
-import { getPublicSupabaseAnonKey } from "@/lib/env";
+import { getPublicSupabaseUrl, getSupabaseServiceRoleKey } from "@/lib/utils/env";
+import { getPublicSupabaseAnonKey } from "@/lib/utils/env";
 
 export function createSupabaseServiceClient() {
   return createClient(getPublicSupabaseUrl(), getSupabaseServiceRoleKey(), {

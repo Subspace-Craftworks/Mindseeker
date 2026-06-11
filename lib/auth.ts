@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/env";
+import { getPublicSupabaseAnonKey, getPublicSupabaseUrl } from "@/lib/utils/env";
 
 export async function requireSupabaseUser(req: NextRequest) {
   const authHeader = req.headers.get("authorization");

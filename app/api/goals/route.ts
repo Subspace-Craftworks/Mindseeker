@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordAppError } from "@/lib/app-logs";
+import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
-import { createGoal, listGoals } from "@/lib/goals";
+import { createGoal, listGoals } from "@/lib/db/goals";
 
 export async function GET(req: NextRequest) {
   const routeName = "/api/goals";
