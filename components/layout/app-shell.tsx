@@ -28,41 +28,38 @@ export function AppShell({ children, userEmail }: AppShellProps) {
   }
 
   return (
-    <div style={{ maxWidth: 1240, margin: "0 auto", padding: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw", overflow: "hidden" }}>
       <header
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 16,
-          marginBottom: 24,
-          padding: 20,
-          borderRadius: 20,
-          border: "1px solid var(--line)",
-          background: "rgba(255, 255, 255, 0.74)",
-          backdropFilter: "blur(12px)",
+          padding: "0 16px",
+          height: "40px",
+          borderBottom: "var(--pane-border)",
+          background: "var(--panel)",
+          flexShrink: 0,
         }}
       >
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>Mindseeker</div>
-          <div style={{ color: "var(--muted)", fontSize: 14 }}>
-            {userEmail ? `Signed in as ${userEmail}` : "Signed in"}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.02em" }}>Mindseeker</div>
+          <div style={{ color: "var(--muted)", fontSize: 12 }}>
+            {userEmail || "Signed in"}
           </div>
         </div>
-        <nav style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <Link href="/chat">Chat</Link>
-          <Link href="/goals">Goals</Link>
+        <nav style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Link href="/chat" style={{ fontSize: 13, fontWeight: 600 }}>Chat</Link>
+          <Link href="/goals" style={{ fontSize: 13, fontWeight: 600 }}>Goals</Link>
           <button
             type="button"
             onClick={handleSignOut}
             disabled={signingOut}
             style={{
-              padding: "10px 14px",
-              borderRadius: 12,
-              border: "1px solid var(--line)",
-              background: "var(--panel)",
+              padding: "4px 8px",
+              borderRadius: "var(--radius-sm)",
+              border: "var(--pane-border)",
+              background: "var(--panel-2)",
               color: "var(--text)",
-              fontWeight: 600,
               cursor: signingOut ? "progress" : "pointer",
             }}
           >
@@ -71,7 +68,9 @@ export function AppShell({ children, userEmail }: AppShellProps) {
         </nav>
       </header>
 
-      <div>{children}</div>
+      <div style={{ flexGrow: 1, display: "flex", overflow: "hidden" }}>
+        {children}
+      </div>
     </div>
   );
 }

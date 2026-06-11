@@ -328,35 +328,35 @@ function ContextGoalBlock({
     <div
       style={{
         display: "grid",
-        gap: 8,
-        paddingBottom: 12,
-        borderBottom: "1px solid rgba(23, 33, 43, 0.08)",
-        opacity: selected ? 1 : 0.92,
+        gap: 4,
+        paddingBottom: 8,
+        borderBottom: "1px solid var(--line-light)",
+        opacity: selected ? 1 : 0.8,
       }}
     >
-      <div style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.04 }}>
+      <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.04 }}>
         Goal:
       </div>
-      <div style={{ display: "grid", gap: 10, paddingLeft: 8 }}>
+      <div style={{ display: "grid", gap: 6, paddingLeft: 4 }}>
         <div
           style={{
-            fontSize: 13,
-            lineHeight: 1.5,
+            fontSize: 12,
+            lineHeight: 1.4,
             fontWeight: 600,
-            padding: selected ? "4px 8px" : 0,
-            borderRadius: 10,
-            background: selected ? "rgba(15, 118, 110, 0.08)" : "transparent",
+            padding: selected ? "2px 6px" : 0,
+            borderRadius: "var(--radius-sm)",
+            background: selected ? "var(--line-light)" : "transparent",
             color: goal.status === "inactive" ? "var(--muted)" : "inherit",
           }}
         >
-          ・{goal.title}{goal.status === "inactive" ? " (Inactive)" : ""}
+          {goal.title}{goal.status === "inactive" ? " (Inactive)" : ""}
         </div>
         {isLatest && (
-          <div style={{ display: "grid", gap: 8, paddingLeft: 10 }}>
-            <ContextLine label="Subject" items={goal.subjects.map((item) => item.title)} />
-            <ContextLine label="Issue" items={goal.issues.map((item) => item.title)} />
-            <ContextLine label="Task" items={goal.tasks.map((item) => item.title)} />
-            <ContextLine label="Event" items={goal.events.map((item) => item.title)} />
+          <div style={{ display: "grid", gap: 4, paddingLeft: 6 }}>
+            <ContextLine label="Sub" items={goal.subjects.map((item) => item.title)} />
+            <ContextLine label="Iss" items={goal.issues.map((item) => item.title)} />
+            <ContextLine label="Tsk" items={goal.tasks.map((item) => item.title)} />
+            <ContextLine label="Evt" items={goal.events.map((item) => item.title)} />
           </div>
         )}
       </div>
@@ -918,45 +918,48 @@ export function ChatWorkspace() {
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "320px minmax(0, 1fr)",
-        gap: 20,
+        display: "flex",
+        height: "100%",
+        width: "100%",
         alignItems: "stretch",
+        overflow: "hidden",
       }}
     >
       <aside
         style={{
-          border: "1px solid var(--line)",
-          borderRadius: 24,
-          background: "rgba(255, 255, 255, 0.78)",
-          padding: 20,
-          minHeight: 640,
+          width: 280,
+          flexShrink: 0,
+          borderRight: "var(--pane-border)",
+          background: "var(--bg)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         <div
           style={{
-            marginBottom: 16,
-            padding: 14,
-            borderRadius: 18,
-            border: "1px solid var(--line)",
-            background: "rgba(247, 245, 240, 0.56)",
-            display: "grid",
+            padding: 12,
+            borderBottom: "var(--pane-border)",
+            display: "flex",
+            flexDirection: "column",
             gap: 8,
+            maxHeight: "40%",
+            flexShrink: 0,
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 12, letterSpacing: 0.08, textTransform: "uppercase", color: "var(--muted)" }}>
-              Context map
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Context Map
             </div>
-            <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <label style={{ fontSize: 10, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
               Inactiveも表示
             </label>
           </div>
           {contextMap ? (
-            <div style={{ display: "grid", gap: 12, maxHeight: 240, overflow: "auto", paddingRight: 4 }}>
+            <div style={{ display: "grid", gap: 8, overflow: "auto", paddingRight: 4 }}>
               {visibleGoals.length === 0 ? (
-                <div style={{ color: "var(--muted)", fontSize: 12 }}>-</div>
+                <div style={{ color: "var(--muted)", fontSize: 11 }}>-</div>
               ) : (
                 visibleGoals.map((goal) => (
                   <ContextGoalBlock key={goal.id} goal={goal} selected={contextMap.currentGoalId === goal.id} isLatest={contextMap.currentGoalId === goal.id} />
@@ -964,157 +967,139 @@ export function ChatWorkspace() {
               )}
             </div>
           ) : (
-            <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading context...</div>
+            <div style={{ color: "var(--muted)", fontSize: 11 }}>Loading context...</div>
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>Threads</div>
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>Conversation history</div>
-          </div>
-          <button
-            type="button"
-            onClick={startNewThread}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid var(--line)",
-              background: "var(--panel)",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            New
-          </button>
-        </div>
-
-        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-          {loadingThreads ? (
-            <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading threads...</div>
-          ) : threads.length === 0 ? (
-            <div
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, overflow: "hidden", padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Threads
+            </div>
+            <button
+              type="button"
+              onClick={startNewThread}
               style={{
-                padding: 16,
-                borderRadius: 16,
-                border: "1px dashed var(--line)",
-                color: "var(--muted)",
-                lineHeight: 1.7,
+                padding: "2px 8px",
+                borderRadius: "var(--radius-sm)",
+                border: "var(--pane-border)",
+                background: "var(--panel)",
+                fontWeight: 600,
+                cursor: "pointer",
               }}
             >
-              No threads yet. Start a new chat from the composer.
-            </div>
-          ) : (
-            threads.map((thread) => {
-              const selected = thread.id === activeThreadId;
-              return (
-                <div
-                  key={thread.id}
-                  style={{
-                    textAlign: "left",
-                    padding: 14,
-                    borderRadius: 16,
-                    border: selected ? "1px solid var(--accent)" : "1px solid var(--line)",
-                    background: selected ? "rgba(15, 118, 110, 0.08)" : "var(--panel)",
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
+              New
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gap: 4, overflow: "auto", paddingRight: 4 }}>
+            {loadingThreads ? (
+              <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading threads...</div>
+            ) : threads.length === 0 ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px dashed var(--line)",
+                  color: "var(--muted)",
+                  fontSize: 12,
+                }}
+              >
+                No threads found.
+              </div>
+            ) : (
+              threads.map((thread) => {
+                const selected = thread.id === activeThreadId;
+                return (
                   <button
+                    key={thread.id}
                     type="button"
                     onClick={() => setActiveThreadId(thread.id)}
                     style={{
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
                       textAlign: "left",
+                      padding: "8px",
+                      borderRadius: "var(--radius-sm)",
+                      border: selected ? "1px solid var(--accent)" : "1px solid transparent",
+                      background: selected ? "rgba(15, 118, 110, 0.08)" : "transparent",
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
                     }}
                   >
-                    <div style={{ fontWeight: 600 }}>{thread.title ?? "Untitled thread"}</div>
-                    <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 6 }}>
-                      Updated {new Date(thread.updated_at).toLocaleString()}
+                    <div style={{ flexGrow: 1, fontWeight: selected ? 600 : 400, fontSize: 12, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {thread.title || "New conversation"}
+                    </div>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDeleteThread(thread.id).catch((deleteError) => {
+                          setError(deleteError instanceof Error ? deleteError.message : "Failed to delete thread");
+                        });
+                      }}
+                      title="Delete thread"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: "2px 4px",
+                        cursor: "pointer",
+                        color: "var(--muted)",
+                        fontSize: 12,
+                      }}
+                    >
+                      ×
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleDeleteThread(thread.id).catch((deleteError) => {
-                        setError(deleteError instanceof Error ? deleteError.message : "Failed to delete thread");
-                      });
-                    }}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "var(--muted)",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      justifySelf: "start",
-                      padding: 0,
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
               );
             })
           )}
         </div>
-      </aside>
-
-      <section
+        </div>
+      </aside>      <section
         style={{
-          border: "1px solid var(--line)",
-          borderRadius: 24,
-          background: "rgba(255, 255, 255, 0.78)",
-          padding: 20,
-          minHeight: 640,
-          display: "grid",
-          gridTemplateRows: "auto minmax(0, 1fr) auto",
-          gap: 16,
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--panel)",
+          position: "relative",
+          minHeight: 0,
         }}
       >
-        <header style={{ display: "grid", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>
-                {activeThread?.title ?? "New conversation"}
-              </div>
-              <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                {activeThread
-                  ? `Conversation ID: ${activeThread.dify_conversation_id}`
-                  : "Start a new thread by sending a message"}
-              </div>
+        <header
+          style={{
+            padding: "12px 16px",
+            borderBottom: "var(--pane-border)",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>
+              {activeThread?.title ?? "New conversation"}
+            </div>
+            <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>
+              {activeThread
+                ? `ID: ${activeThread.dify_conversation_id}`
+                : "Start a new thread by sending a message"}
             </div>
           </div>
           {loadingThreadId === activeThreadId ? (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading conversation...</div>
-          ) : null}
-          {error ? (
-            <div
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid rgba(140, 75, 45, 0.24)",
-                background: "rgba(140, 75, 45, 0.08)",
-                color: "var(--accent-2)",
-              }}
-            >
-              {error}
-            </div>
+            <div style={{ color: "var(--muted)", fontSize: 11 }}>Loading...</div>
           ) : null}
         </header>
 
         <div
           style={{
-            border: "1px solid var(--line)",
-            borderRadius: 20,
-            background: "rgba(247, 245, 240, 0.56)",
-            padding: 18,
-            overflow: "auto",
-            display: "grid",
+            flexGrow: 1,
+            overflowY: "auto",
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
             gap: 12,
-            alignContent: "start",
           }}
         >
           {activeMessages.length === 0 ? (

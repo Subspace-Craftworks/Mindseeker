@@ -7,18 +7,23 @@
   --muted: #617081;
   --accent: #0f766e;
   --accent-2: #8c4b2d;
-  --line: rgba(23, 33, 43, 0.12);
+  --line: rgba(23, 33, 43, 0.16);
+  --line-light: rgba(23, 33, 43, 0.08);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --pane-border: 1px solid var(--line);
 }
 
 html, body {
   margin: 0;
-  min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 35%),
-    radial-gradient(circle at bottom right, rgba(140, 75, 45, 0.10), transparent 28%),
-    var(--bg);
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px; /* Default tighter font size */
 }
 
 a {
@@ -30,10 +35,16 @@ a {
   box-sizing: border-box;
 }
 
-main {
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  box-shadow: 0 24px 80px rgba(23, 33, 43, 0.08);
-  backdrop-filter: blur(8px);
+/* Base button styles for high density */
+button {
+  font-family: inherit;
+  font-size: 13px;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: 13px;
+  border: var(--pane-border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
 }

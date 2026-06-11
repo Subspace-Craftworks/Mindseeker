@@ -471,32 +471,33 @@ export function GoalsWorkspace() {
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "300px minmax(0, 1fr)",
-        gap: 20,
-        alignItems: "start",
+        display: "flex",
+        height: "100%",
+        width: "100%",
+        alignItems: "stretch",
+        overflow: "hidden",
       }}
     >
       {/* ── Sidebar: goal list ── */}
       <aside
         style={{
-          border: "1px solid var(--line)",
-          borderRadius: 24,
-          background: "rgba(255, 255, 255, 0.78)",
-          padding: 20,
-          minHeight: 640,
-          position: "sticky",
-          top: 24,
+          width: 280,
+          flexShrink: 0,
+          borderRight: "var(--pane-border)",
+          background: "var(--bg)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>Goals</div>
-          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+        <div style={{ padding: "12px 16px", borderBottom: "var(--pane-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>Goals</div>
+          <div style={{ color: "var(--muted)", fontSize: 11 }}>
             {goals.length} goal{goals.length !== 1 ? "s" : ""}
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ flexGrow: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           {loadingGoals ? (
             <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading...</div>
           ) : goals.length === 0 ? (
@@ -531,7 +532,7 @@ export function GoalsWorkspace() {
                   >
                     {groupStatus}
                   </div>
-                  <div style={{ display: "grid", gap: 6 }}>
+                  <div style={{ display: "grid", gap: 4 }}>
                     {group.map((goal) => {
                       const selected = goal.id === selectedGoalId;
                       return (
@@ -541,14 +542,14 @@ export function GoalsWorkspace() {
                           onClick={() => setSelectedGoalId(goal.id)}
                           style={{
                             textAlign: "left",
-                            padding: "10px 14px",
-                            borderRadius: 14,
-                            border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-                            background: selected ? "rgba(15, 118, 110, 0.08)" : "var(--panel)",
+                            padding: "8px",
+                            borderRadius: "var(--radius-sm)",
+                            border: selected ? "1px solid var(--accent)" : "1px solid transparent",
+                            background: selected ? "rgba(15, 118, 110, 0.08)" : "transparent",
                             cursor: "pointer",
                           }}
                         >
-                          <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.4 }}>{goal.title}</div>
+                          <div style={{ fontWeight: selected ? 600 : 400, fontSize: 12, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{goal.title}</div>
                         </button>
                       );
                     })}
@@ -563,35 +564,46 @@ export function GoalsWorkspace() {
       {/* ── Main: editor ── */}
       <section
         style={{
-          border: "1px solid var(--line)",
-          borderRadius: 24,
-          background: "rgba(255, 255, 255, 0.78)",
-          padding: 24,
-          minHeight: 640,
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--panel)",
+          position: "relative",
+          minHeight: 0,
         }}
       >
-        <header style={{ marginBottom: 20, display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>
+        <header
+          style={{
+            padding: "12px 16px",
+            borderBottom: "var(--pane-border)",
+            background: "var(--bg)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
             {selectedGoalSummary?.title ?? "Select a goal"}
           </div>
-          <div style={{ color: "var(--muted)", fontSize: 13 }}>
+          <div style={{ color: "var(--muted)", fontSize: 11 }}>
             {selectedGoalSummary
               ? `Updated ${new Date(selectedGoalSummary.updated_at).toLocaleString()}`
               : "Pick a goal from the list to edit it"}
           </div>
         </header>
 
+        <div style={{ flexGrow: 1, overflowY: "auto", padding: 16 }}>
         {loadingDetail ? (
-          <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading goal...</div>
+          <div style={{ color: "var(--muted)", fontSize: 12 }}>Loading goal...</div>
         ) : error ? (
           <div
             style={{
-              padding: 14,
-              borderRadius: 12,
+              padding: 12,
+              borderRadius: "var(--radius-sm)",
               border: "1px solid rgba(140, 75, 45, 0.24)",
               background: "rgba(140, 75, 45, 0.08)",
               color: "var(--accent-2)",
-              fontSize: 13,
+              fontSize: 12,
             }}
           >
             {error}
@@ -609,6 +621,7 @@ export function GoalsWorkspace() {
             No goal selected.
           </div>
         )}
+        </div>
       </section>
     </div>
   );
