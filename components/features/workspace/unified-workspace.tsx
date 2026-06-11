@@ -1047,7 +1047,14 @@ export function UnifiedWorkspace() {
                 <div style={{ color: "var(--muted)", fontSize: 11 }}>-</div>
               ) : (
                 visibleGoals.map((goal) => (
-                  <ContextGoalBlock key={goal.id} goal={goal} selected={contextMap.currentGoalId === goal.id} isLatest={contextMap.currentGoalId === goal.id} />
+                  <ContextGoalBlock
+                    key={goal.id}
+                    goal={goal}
+                    selected={contextMap.currentGoalId === goal.id}
+                    isLatest={contextMap.currentGoalId === goal.id}
+                    isActiveEditor={selectedGoalId === goal.id}
+                    onClick={() => setSelectedGoalId(goal.id === selectedGoalId ? null : goal.id)}
+                  />
                 ))
               )}
             </div>
