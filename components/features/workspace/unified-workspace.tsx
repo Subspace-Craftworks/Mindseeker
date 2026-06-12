@@ -732,6 +732,8 @@ export function UnifiedWorkspace() {
         setActiveThreadId(matched.id);
         return matched.id;
       }
+    }
+
     return null;
   }
 
