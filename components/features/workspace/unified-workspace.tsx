@@ -732,9 +732,28 @@ export function UnifiedWorkspace() {
         setActiveThreadId(matched.id);
         return matched.id;
       }
+    return null;
+  }
+
+  async function refreshGoalDetail(goalId?: string | null) {
+    const targetId = goalId ?? selectedGoalId;
+    if (!sessionToken || !targetId) {
+      return;
     }
 
-    return null;
+    try {
+      const response = await fetch(`/api/goals/${targetId}`, {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      const payload = (await response.json()) as GoalDetailResponse;
+      if (response.ok && payload.ok && payload.data) {
+        setSelectedGoalDetail(payload.data);
+      }
+    } catch (err) {
+      console.error("Failed to silently refresh goal detail:", err);
+    }
   }
 
   async function refreshContextMap(threadId?: string | null) {
@@ -887,6 +906,7 @@ export function UnifiedWorkspace() {
 
         const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
         await refreshContextMap(nextThreadId ?? activeThreadId);
+        await refreshGoalDetail();
         if (threadKey === "draft" && nextThreadId) {
           setMessagesByThread((current) => {
             const draftMessages = current.draft ?? [];
