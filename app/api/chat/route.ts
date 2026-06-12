@@ -286,7 +286,13 @@ export async function POST(req: NextRequest) {
             const goalMatch = answer.match(/<current_goal_id>(.*?)<\/current_goal_id>/);
             
             if (goalMatch) {
-              extractedGoalId = goalMatch[1].trim();
+              const matchedText = goalMatch[1].trim();
+              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              if (uuidRegex.test(matchedText)) {
+                extractedGoalId = matchedText;
+              } else {
+                console.warn(`Invalid goal_id format received from LLM: ${matchedText}`);
+              }
               // Strip the tag from the final answer text
               answer = answer.replace(/<current_goal_id>.*?<\/current_goal_id>/g, "").trim();
             }
