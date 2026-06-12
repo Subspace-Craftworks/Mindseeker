@@ -232,7 +232,7 @@ function RenderRecordList({
   }
   return (
     <div style={{ display: "grid", gap: 2 }}>
-      {items.slice(0, 5).map((item, index) => (
+      {items.map((item, index) => (
         <RecordListItem
           key={String(item.id ?? `${index}`)}
           item={item}

@@ -1006,10 +1006,8 @@ export function UnifiedWorkspace() {
   function handleGoalSaved(updated: GoalRecord) {
     // Refresh context map so that Goal list is updated
     void refreshContextMap().catch(() => undefined);
-    // Optimistically update details
-    if (selectedGoalDetail && selectedGoalDetail.goal.id === updated.id) {
-      setSelectedGoalDetail({ ...selectedGoalDetail, goal: updated });
-    }
+    // Reload full goal details so subjects, tasks etc. are refreshed
+    void refreshGoalDetail(updated.id).catch(() => undefined);
   }
 
   function handleGoalDeleted(goalId: string) {
