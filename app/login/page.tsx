@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { LoginPanel } from "@/components/features/auth/login-panel";
 import { getCurrentUser } from "@/lib/supabase/server";
 
@@ -36,7 +37,9 @@ export default async function LoginPage({
         </div>
       ) : null}
       <div style={{ marginTop: 24 }}>
-        <LoginPanel />
+        <Suspense fallback={<div>Loading...</div>}>
+          <LoginPanel />
+        </Suspense>
       </div>
     </main>
   );

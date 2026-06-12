@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
-async function signIn(provider: "google" | "github") {
+import { useSearchParams } from "next/navigation";
+
+async function signIn(provider: "google" | "github", nextPath: string = "/chat") {
   const supabase = createBrowserSupabaseClient();
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
     },
   });
 
@@ -20,12 +22,14 @@ async function signIn(provider: "google" | "github") {
 export function LoginPanel() {
   const [loading, setLoading] = useState<"google" | "github" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/chat";
 
   async function handleSignIn(provider: "google" | "github") {
     setLoading(provider);
     setError(null);
     try {
-      await signIn(provider);
+      await signIn(provider, nextPath);
     } catch (signInError) {
       setError(signInError instanceof Error ? signInError.message : "Login failed");
     } finally {
