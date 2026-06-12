@@ -648,6 +648,37 @@ export function UnifiedWorkspace() {
     });
   }
 
+  async function handleSaveArtifact(messageContent: string) {
+    if (!sessionToken || !selectedGoalId) return;
+    const title = window.prompt("Enter a title for this artifact:", "無題");
+    if (!title) return; // User cancelled
+
+    try {
+      const res = await fetch("/api/artifacts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          goal_id: selectedGoalId,
+          title,
+          content: messageContent,
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error?.message ?? "Failed to save artifact");
+      }
+      // Refresh the goal detail to show the new artifact
+      if (selectedGoalDetail) {
+        handleGoalSaved(selectedGoalDetail.goal);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "An error occurred");
+    }
+  }
+
   useEffect(() => {
     if (!sessionToken || !activeThreadId) {
       return;
@@ -1309,7 +1340,27 @@ export function UnifiedWorkspace() {
                   </details>
                 )}
                 {message.role === "assistant" ? (
-                  <MarkdownMessage content={message.content} />
+                  <div style={{ position: "relative" }}>
+                    <MarkdownMessage content={message.content} />
+                    {selectedGoalId && (
+                      <button
+                        type="button"
+                        onClick={() => handleSaveArtifact(message.content)}
+                        style={{
+                          marginTop: 8,
+                          padding: "4px 8px",
+                          fontSize: 12,
+                          background: "var(--line)",
+                          color: "var(--text)",
+                          border: "none",
+                          borderRadius: "var(--radius-sm)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        💾 Save as Artifact
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <div style={{ whiteSpace: "pre-wrap" }}>{message.content}</div>
                 )}

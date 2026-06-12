@@ -19,6 +19,7 @@ export type GoalDetail = {
   issues: Record<string, unknown>[];
   tasks: Record<string, unknown>[];
   events: Record<string, unknown>[];
+  artifacts: Record<string, unknown>[];
 };
 
 type GoalUpdateResponse = {
@@ -67,7 +68,7 @@ function RecordListItem({
   const title = titlePair ? titlePair[1] : item.id ? String(item.id) : `Item ${index + 1}`;
 
   return (
-    <div style={{ display: "grid" }}>
+    <div style={{ padding: "0 4px" }}>
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -255,16 +256,32 @@ export type GoalEditorProps = {
   onNewChat?: (goalId: string) => void;
 };
 
-export function GoalEditor({ detail, sessionToken, onSaved, onDeleted, onNewChat }: GoalEditorProps) {
+export function GoalEditor({
+  detail,
+  sessionToken,
+  onSaved,
+  onDeleted,
+  onNewChat,
+}: {
+  detail: GoalDetail;
+  sessionToken: string;
+  onSaved: (goal: GoalRecord) => void;
+  onDeleted: (goalId: string) => void;
+  onNewChat?: (goalId: string) => void;
+}) {
   const [title, setTitle] = useState(detail.goal.title);
-  const [description, setDescription] = useState(detail.goal.description ?? "");
-  const [background, setBackground] = useState(detail.goal.background ?? "");
+  const [description, setDescription] = useState(detail.goal.description || "");
+  const [background, setBackground] = useState(detail.goal.background || "");
   const [status, setStatus] = useState<"active" | "inactive">(
     detail.goal.status === "inactive" ? "inactive" : "active",
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Artifact modal state
+  const [openArtifactId, setOpenArtifactId] = useState<string | null>(null);
+  const [deletingArtifactId, setDeletingArtifactId] = useState<string | null>(null);
 
   const goalIdRef = useRef(detail.goal.id);
   useEffect(() => {
@@ -541,7 +558,103 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted, onNewChat
             />
           </div>
         ))}
+        
+        {/* Artifacts section */}
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
+            Artifacts
+            <span style={{ marginLeft: 6, fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+              ({detail.artifacts?.length || 0})
+            </span>
+          </div>
+          {detail.artifacts?.length === 0 ? (
+            <div style={{ color: "var(--muted)", fontSize: 12, padding: "8px 0" }}>No artifacts yet.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 6 }}>
+              {detail.artifacts?.map((artifact: any) => (
+                <div key={artifact.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", border: "1px solid var(--line-light)", borderRadius: "var(--radius-sm)", background: "white" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{artifact.title}</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      disabled={deletingArtifactId === artifact.id}
+                      onClick={async () => {
+                        if (!window.confirm("Delete this artifact?")) return;
+                        setDeletingArtifactId(artifact.id);
+                        try {
+                          const res = await fetch(`/api/artifacts/${artifact.id}`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${sessionToken}` }
+                          });
+                          if (!res.ok) throw new Error("Delete failed");
+                          onSaved(detail.goal); // trigger refresh
+                        } catch (e) {
+                          alert("Failed to delete artifact");
+                        } finally {
+                          setDeletingArtifactId(null);
+                        }
+                      }}
+                      style={{ padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)", border: "1px solid rgba(180, 60, 40, 0.35)", background: "transparent", color: "rgba(180, 60, 40, 0.85)", cursor: "pointer" }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const blob = new Blob([artifact.content], { type: "text/markdown" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${artifact.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.md`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      style={{ padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "white", color: "var(--text)", cursor: "pointer" }}
+                    >
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOpenArtifactId(artifact.id)}
+                      style={{ padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)", border: "1px solid var(--accent)", background: "var(--accent)", color: "white", cursor: "pointer" }}
+                    >
+                      Open
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Artifact Modal */}
+      {openArtifactId && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "white", width: "100%", maxWidth: 800, maxHeight: "100%", borderRadius: 12, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+            {(() => {
+              const activeArtifact = detail.artifacts?.find((a: any) => a.id === openArtifactId) as any;
+              if (!activeArtifact) return null;
+              return (
+                <>
+                  <header style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg)" }}>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>{activeArtifact.title}</div>
+                    <button
+                      onClick={() => setOpenArtifactId(null)}
+                      style={{ padding: "4px 12px", borderRadius: 16, border: "none", background: "var(--line)", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      Close
+                    </button>
+                  </header>
+                  <div style={{ padding: 20, overflowY: "auto", flexGrow: 1, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.6 }}>
+                    {activeArtifact.content}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

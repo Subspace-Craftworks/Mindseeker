@@ -17,6 +17,7 @@ export type GoalDetail = {
   issues: Record<string, unknown>[];
   tasks: Record<string, unknown>[];
   events: Record<string, unknown>[];
+  artifacts: Record<string, unknown>[];
 };
 
 export async function listGoals(userId: string) {
@@ -149,17 +150,19 @@ export async function getGoalDetail(input: { userId: string; goalId: string }) {
     return null;
   }
 
-  const [{ data: subjects, error: subjectsError }, { data: issues, error: issuesError }, { data: tasks, error: tasksError }, { data: events, error: eventsError }] = await Promise.all([
+  const [{ data: subjects, error: subjectsError }, { data: issues, error: issuesError }, { data: tasks, error: tasksError }, { data: events, error: eventsError }, { data: artifacts, error: artifactsError }] = await Promise.all([
     supabase.from("subjects").select("*").eq("goal_id", input.goalId).eq("user_id", input.userId).order("updated_at", { ascending: false }),
     supabase.from("issues").select("*").eq("user_id", input.userId).order("updated_at", { ascending: false }),
     supabase.from("tasks").select("*").eq("user_id", input.userId).order("updated_at", { ascending: false }),
     supabase.from("events").select("*").eq("goal_id", input.goalId).eq("user_id", input.userId).order("occurred_at", { ascending: false }),
+    supabase.from("artifacts").select("*").eq("goal_id", input.goalId).eq("user_id", input.userId).order("created_at", { ascending: false }),
   ]);
 
   if (subjectsError) throw subjectsError;
   if (issuesError) throw issuesError;
   if (tasksError) throw tasksError;
   if (eventsError) throw eventsError;
+  if (artifactsError) throw artifactsError;
 
   const subjectIds = new Set((subjects ?? []).map((row) => String((row as { id?: unknown }).id ?? "")).filter(Boolean));
   const issuesFiltered = (issues ?? []).filter((row) => {
@@ -179,6 +182,7 @@ export async function getGoalDetail(input: { userId: string; goalId: string }) {
     issues: issuesFiltered,
     tasks: tasksFiltered,
     events: events ?? [],
+    artifacts: artifacts ?? [],
   } as GoalDetail;
 }
 
