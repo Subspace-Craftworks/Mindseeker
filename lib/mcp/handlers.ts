@@ -657,3 +657,50 @@ export async function executeTool(name: string, args: JsonObject, userId: string
   const params = { ...args, user_id: userId };
   return handler(supabase, params);
 }
+
+export async function getGoalContextText(goalId: string, userId: string): Promise<string> {
+  const supabase = getSupabaseClient();
+  try {
+    const payload = await summarizeContext(supabase, { goal_id: goalId, user_id: userId });
+    
+    let text = `Goal [ID: ${payload.goal.id}]: ${payload.goal.title}\n`;
+    if (payload.goal.description) text += `Description: ${payload.goal.description}\n`;
+    text += `Status: ${payload.goal.status}\n\n`;
+
+    if (payload.subjects.length > 0) {
+      text += `[Subjects]\n`;
+      for (const sub of payload.subjects) {
+        text += `- [ID: ${sub.id}] ${sub.title} (${sub.status})\n`;
+      }
+      text += `\n`;
+    }
+
+    if (payload.open_issues.length > 0) {
+      text += `[Open Issues]\n`;
+      for (const issue of payload.open_issues) {
+        text += `- [ID: ${issue.id}] ${issue.title} (${issue.severity})\n`;
+      }
+      text += `\n`;
+    }
+
+    if (payload.open_tasks.length > 0) {
+      text += `[Open Tasks]\n`;
+      for (const task of payload.open_tasks) {
+        text += `- [ID: ${task.id}] ${task.title} (${task.status})\n`;
+      }
+      text += `\n`;
+    }
+
+    if (payload.recent_events.length > 0) {
+      text += `[Recent Events]\n`;
+      for (const ev of payload.recent_events) {
+        text += `- [ID: ${ev.id}] ${ev.title}\n`;
+      }
+    }
+
+    return text.trim();
+  } catch (err) {
+    console.error("Failed to get goal context:", err);
+    return "";
+  }
+}

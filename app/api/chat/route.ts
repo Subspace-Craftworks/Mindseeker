@@ -5,6 +5,7 @@ import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
 import { upsertChatThread } from "@/lib/db/chat-threads";
 import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/utils/env";
+import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 type StreamEvent =
   | {
@@ -157,6 +158,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 1. Fetch current_goal_id and context from DB if conversation exists
+    let currentGoalIdStr = "";
+    let currentGoalContextStr = "";
+    if (conversationId) {
+      try {
+        const supabase = createSupabaseServiceClient();
+        const { data: thread } = await supabase
+          .from("chat_threads")
+          .select("current_goal_id")
+          .eq("dify_conversation_id", conversationId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (thread?.current_goal_id) {
+          currentGoalIdStr = thread.current_goal_id;
+          
+          // Use the helper to fetch context text
+          const { getGoalContextText } = await import("@/lib/mcp/handlers");
+          currentGoalContextStr = await getGoalContextText(currentGoalIdStr, user.id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch current_goal_id/context:", err);
+      }
+    }
+
     const upstream = await fetch(`${getDifyApiBaseUrl()}/chat-messages`, {
       method: "POST",
       headers: {
@@ -164,7 +190,10 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        inputs: {},
+        inputs: {
+          current_goal_id: currentGoalIdStr,
+          current_goal_context: currentGoalContextStr
+        },
         query: message,
         response_mode: "streaming",
         conversation_id: conversationId || "",
@@ -249,18 +278,25 @@ export async function POST(req: NextRequest) {
               if (!answer && typeof event.answer === "string") {
                 answer = event.answer;
               }
-              if (typeof event.answer === "string" && event.answer) {
-                answer += "";
-              }
             }
           }
 
           if (upstreamConversationId) {
+            let extractedGoalId: string | undefined = undefined;
+            const goalMatch = answer.match(/<current_goal_id>(.*?)<\/current_goal_id>/);
+            
+            if (goalMatch) {
+              extractedGoalId = goalMatch[1].trim();
+              // Strip the tag from the final answer text
+              answer = answer.replace(/<current_goal_id>.*?<\/current_goal_id>/g, "").trim();
+            }
+
             await upsertChatThread({
               userId: user.id,
               conversationId: upstreamConversationId,
               title: message.slice(0, 40),
               appKey: "mindseeker",
+              currentGoalId: extractedGoalId,
             });
           }
 
