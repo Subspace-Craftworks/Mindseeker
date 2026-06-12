@@ -5,6 +5,7 @@ export type GoalRecord = {
   user_id: string | null;
   title: string;
   description: string | null;
+  background: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -33,7 +34,7 @@ export async function listGoals(userId: string) {
   return (data ?? []) as GoalRecord[];
 }
 
-export async function createGoal(input: { userId: string; title: string; description?: string | null; status?: string | null }) {
+export async function createGoal(input: { userId: string; title: string; description?: string | null; background?: string | null; status?: string | null }) {
   const supabase = createSupabaseServiceClient();
   const { data, error } = await supabase
     .from("goals")
@@ -41,6 +42,7 @@ export async function createGoal(input: { userId: string; title: string; descrip
       user_id: input.userId,
       title: input.title,
       description: input.description ?? null,
+      background: input.background ?? null,
       status: input.status ?? "active",
     })
     .select("*")
@@ -58,14 +60,16 @@ export async function updateGoal(input: {
   goalId: string;
   title?: string;
   description?: string | null;
+  background?: string | null;
   status?: string;
 }) {
   const supabase = createSupabaseServiceClient();
-  const updates: Partial<{ title: string; description: string | null; status: string; updated_at: string }> = {
+  const updates: Partial<{ title: string; description: string | null; background: string | null; status: string; updated_at: string }> = {
     updated_at: new Date().toISOString(),
   };
   if (input.title !== undefined) updates.title = input.title;
   if (input.description !== undefined) updates.description = input.description;
+  if (input.background !== undefined) updates.background = input.background;
   if (input.status !== undefined) updates.status = input.status;
 
   const { data, error } = await supabase

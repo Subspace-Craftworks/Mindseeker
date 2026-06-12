@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const title = typeof body.title === "string" ? body.title.trim() : "";
     const description = typeof body.description === "string" ? body.description.trim() : null;
+    const background = typeof body.background === "string" ? body.background.trim() : null;
     const status = typeof body.status === "string" ? body.status.trim() : null;
 
     if (!title) {
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       title,
       description: description || null,
+      background: background || null,
       status: status || null,
     });
 

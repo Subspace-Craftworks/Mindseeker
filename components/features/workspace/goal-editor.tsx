@@ -251,11 +251,13 @@ export type GoalEditorProps = {
   sessionToken: string;
   onSaved: (updated: GoalRecord) => void;
   onDeleted: (goalId: string) => void;
+  onNewChat?: (goalId: string) => void;
 };
 
-export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEditorProps) {
+export function GoalEditor({ detail, sessionToken, onSaved, onDeleted, onNewChat }: GoalEditorProps) {
   const [title, setTitle] = useState(detail.goal.title);
   const [description, setDescription] = useState(detail.goal.description ?? "");
+  const [background, setBackground] = useState(detail.goal.background ?? "");
   const [status, setStatus] = useState<"active" | "inactive">(
     detail.goal.status === "inactive" ? "inactive" : "active",
   );
@@ -269,6 +271,7 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
       goalIdRef.current = detail.goal.id;
       setTitle(detail.goal.title);
       setDescription(detail.goal.description ?? "");
+      setBackground(detail.goal.background ?? "");
       setStatus(detail.goal.status === "inactive" ? "inactive" : "active");
       setSaveError(null);
     }
@@ -277,6 +280,7 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
   const isDirty =
     title.trim() !== detail.goal.title ||
     (description.trim() || null) !== detail.goal.description ||
+    (background.trim() || null) !== detail.goal.background ||
     status !== (detail.goal.status === "inactive" ? "inactive" : "active");
 
   async function handleSave() {
@@ -293,6 +297,7 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
+          background: background.trim() || null,
           status,
         }),
       });
@@ -408,6 +413,27 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
           />
         </div>
 
+        <div style={{ display: "grid", gap: 4 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Background
+          </label>
+          <textarea
+            value={background}
+            onChange={(e) => setBackground(e.target.value)}
+            disabled={saving || deleting}
+            rows={4}
+            placeholder="Why was this goal set?"
+            style={{
+              padding: "8px 10px",
+              width: "100%",
+              boxSizing: "border-box",
+              resize: "vertical",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--line)",
+            }}
+          />
+        </div>
+
         {saveError ? (
           <div
             style={{
@@ -441,22 +467,43 @@ export function GoalEditor({ detail, sessionToken, onSaved, onDeleted }: GoalEdi
             {deleting ? "Deleting..." : "Delete"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || deleting || !isDirty || !title.trim()}
-            style={{
-              padding: "6px 16px",
-              borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: isDirty && title.trim() && !saving && !deleting ? "var(--text)" : "var(--line)",
-              color: isDirty && title.trim() && !saving && !deleting ? "#fff" : "var(--muted)",
-              fontWeight: 600,
-              cursor: saving || deleting || !isDirty || !title.trim() ? "not-allowed" : "pointer",
-            }}
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {onNewChat && (
+              <button
+                type="button"
+                onClick={() => onNewChat(detail.goal.id)}
+                disabled={saving || deleting}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--line)",
+                  background: "transparent",
+                  color: "var(--text)",
+                  fontWeight: 600,
+                  cursor: saving || deleting ? "not-allowed" : "pointer",
+                }}
+              >
+                💬 New Chat
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving || deleting || !isDirty || !title.trim()}
+              style={{
+                padding: "6px 16px",
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: isDirty && title.trim() && !saving && !deleting ? "var(--text)" : "var(--line)",
+                color: isDirty && title.trim() && !saving && !deleting ? "#fff" : "var(--muted)",
+                fontWeight: 600,
+                cursor: saving || deleting || !isDirty || !title.trim() ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
         </div>
       </div>
 

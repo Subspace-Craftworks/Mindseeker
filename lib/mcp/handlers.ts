@@ -58,6 +58,7 @@ async function createGoal(supabase: SupabaseClient, params: JsonObject) {
       user_id: userId,
       title,
       description: cleanString(params.description),
+      background: cleanString(params.background),
       status: cleanString(params.status) ?? "active",
     })
     .select("*")
@@ -75,10 +76,12 @@ async function updateGoal(supabase: SupabaseClient, params: JsonObject) {
   const patch: JsonObject = {};
   const title = cleanString(params.title);
   const description = params.description === undefined ? undefined : cleanString(params.description);
+  const background = params.background === undefined ? undefined : cleanString(params.background);
   const status = cleanString(params.status);
 
   if (title) patch.title = title;
   if (description !== undefined) patch.description = description;
+  if (background !== undefined) patch.background = background;
   if (status) patch.status = status;
 
   if (Object.keys(patch).length === 0) {

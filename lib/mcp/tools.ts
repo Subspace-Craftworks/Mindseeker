@@ -18,6 +18,7 @@ export const MCP_TOOLS = [
       properties: {
         title: { type: "string", description: "Title of the goal" },
         description: { type: "string", description: "Detailed description" },
+        background: { type: "string", description: "Background or reason why this goal was set" },
         status: { type: "string", description: "Status (e.g. 'active', 'inactive'). Defaults to 'active'" }
       },
       required: ["title"]
@@ -43,6 +44,7 @@ export const MCP_TOOLS = [
         goal_id: { type: "string", description: "ID of the goal to update" },
         title: { type: "string", description: "New title" },
         description: { type: "string", description: "New description" },
+        background: { type: "string", description: "New background or reason" },
         status: { type: "string", description: "New status" }
       },
       required: ["goal_id"]

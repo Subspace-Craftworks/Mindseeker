@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const { id } = await context.params;
     const body = await req.json().catch(() => ({}));
 
-    const updates: { title?: string; description?: string | null; status?: string } = {};
+    const updates: { title?: string; description?: string | null; background?: string | null; status?: string } = {};
 
     if (typeof body.title === "string") {
       const trimmed = body.title.trim();
@@ -64,6 +64,10 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     if ("description" in body) {
       updates.description = typeof body.description === "string" ? body.description.trim() || null : null;
+    }
+
+    if ("background" in body) {
+      updates.background = typeof body.background === "string" ? body.background.trim() || null : null;
     }
 
     if (typeof body.status === "string") {

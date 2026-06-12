@@ -1120,6 +1120,8 @@ export function UnifiedWorkspace() {
             ) : (
               threads.map((thread) => {
                 const selected = thread.id === activeThreadId;
+                const isRelatedToSelectedGoal = selectedGoalId && thread.current_goal_id === selectedGoalId;
+                
                 return (
                   <button
                     key={thread.id}
@@ -1129,10 +1131,10 @@ export function UnifiedWorkspace() {
                       textAlign: "left",
                       padding: "8px 12px",
                       borderRadius: "var(--radius-md)",
-                      border: "none",
+                      border: isRelatedToSelectedGoal && !selected ? "1px solid var(--accent)" : "1px solid transparent",
                       background: selected ? "var(--accent)" : "transparent",
                       color: selected ? "white" : "inherit",
-                      opacity: selected ? 1 : 0.75,
+                      opacity: selected ? 1 : (isRelatedToSelectedGoal ? 0.9 : 0.75),
                       cursor: "pointer",
                       display: "flex",
                       flexDirection: "column",
@@ -1213,6 +1215,9 @@ export function UnifiedWorkspace() {
                 sessionToken={sessionToken}
                 onSaved={handleGoalSaved}
                 onDeleted={handleGoalDeleted}
+                onNewChat={() => {
+                  startNewThread();
+                }}
               />
             ) : (
               <div style={{ color: "var(--muted)", fontSize: 12 }}>Failed to load goal.</div>
