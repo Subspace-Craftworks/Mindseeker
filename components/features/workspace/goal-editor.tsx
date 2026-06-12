@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export type GoalRecord = {
   id: string;
@@ -63,8 +65,9 @@ function RecordListItem({
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const summary = summarizeRecord(item);
-  const titlePair = summary.find(([label]) => label === "title" || label === "name");
+  const entries = Object.entries(item).filter(([k]) => !["id", "user_id", "goal_id", "created_at", "updated_at", "status", "subject_id", "issue_id"].includes(k));
+  const titlePair = entries.find(([k]) => k === "title" || k === "name");
+  const summary = entries.filter(([k]) => k !== (titlePair ? titlePair[0] : null));
   const title = titlePair ? titlePair[1] : item.id ? String(item.id) : `Item ${index + 1}`;
 
   return (
@@ -73,31 +76,39 @@ function RecordListItem({
         type="button"
         onClick={() => setExpanded(!expanded)}
         style={{
-          textAlign: "left",
-          padding: "4px 8px",
+          width: "100%",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
           background: "transparent",
           border: "none",
+          padding: "6px 0",
           cursor: "pointer",
-          fontSize: 13,
-          color: expanded ? "var(--text)" : "var(--muted)",
-          fontWeight: expanded ? 600 : 400,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          borderRadius: "var(--radius-sm)",
-          transition: "all 0.2s",
-        }}
-        onMouseEnter={(e) => {
-          if (!expanded) e.currentTarget.style.color = "var(--text)";
-        }}
-        onMouseLeave={(e) => {
-          if (!expanded) e.currentTarget.style.color = "var(--muted)";
+          textAlign: "left",
+          color: "var(--text)",
         }}
       >
-        <span style={{ fontSize: 9, opacity: 0.6, width: 12, textAlign: "center" }}>
+        <span style={{ fontSize: 11, color: "var(--muted)", paddingTop: 3, opacity: 0.7, minWidth: 14 }}>
           {expanded ? "▼" : "▶"}
         </span>
-        {title}
+        <div style={{ flexGrow: 1 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{String(title)}</div>
+          {errorMsg && <div style={{ fontSize: 11, color: "rgba(180, 60, 40, 0.85)", marginTop: 2 }}>{errorMsg}</div>}
+        </div>
+        {Boolean(item.status) && (
+          <span
+            style={{
+              fontSize: 10,
+              padding: "2px 6px",
+              borderRadius: "var(--radius-sm)",
+              background: item.status === "inactive" ? "transparent" : "var(--accent)",
+              color: item.status === "inactive" ? "var(--muted)" : "white",
+              border: item.status === "inactive" ? "1px solid var(--line)" : "none",
+            }}
+          >
+            {String(item.status)}
+          </span>
+        )}
       </button>
       
       {expanded && (
@@ -115,20 +126,20 @@ function RecordListItem({
             boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
           }}
         >
-          {summary.length === 0 ? (
-            <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 11 }}>
-              {JSON.stringify(item, null, 2)}
-            </pre>
-          ) : (
-            summary.map(([label, value]) => (
+          {summary.map(([label, value]) => (
               <div key={label} style={{ display: "grid", gap: 2 }}>
                 <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {label}
                 </div>
-                <div style={{ fontSize: 12, lineHeight: 1.5 }}>{value}</div>
+                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                  {label === "content" || label === "description" ? (
+                    <MarkdownMessage content={String(value)} />
+                  ) : (
+                    String(value)
+                  )}
+                </div>
               </div>
-            ))
-          )}
+            ))}
 
           {/* Action buttons */}
           {Boolean(item.id) && (
@@ -199,8 +210,9 @@ function RecordListItem({
                         fontSize: 11,
                         borderRadius: "var(--radius-sm)",
                         border: isSelected ? "1px solid var(--accent)" : "1px solid var(--line)",
-                        background: isSelected ? "rgba(15, 118, 110, 0.10)" : "transparent",
+                        background: isSelected ? "rgba(43, 90, 140, 0.08)" : "transparent",
                         color: isSelected ? "var(--accent)" : "var(--muted)",
+                        fontWeight: isSelected ? 600 : 400,
                         cursor: updating || isSelected ? "not-allowed" : "pointer",
                       }}
                     >
@@ -211,7 +223,6 @@ function RecordListItem({
               </div>
             </div>
           )}
-          {errorMsg && <div style={{ color: "var(--accent-2)", fontSize: 11 }}>{errorMsg}</div>}
         </div>
       )}
     </div>
@@ -245,6 +256,83 @@ function RenderRecordList({
         />
       ))}
     </div>
+  );
+}
+
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p style={{ margin: "0 0 0.85em" }}>{children}</p>,
+        strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+        em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
+        a: ({ children, href }) => (
+          <a href={href} target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>
+            {children}
+          </a>
+        ),
+        code: ({ children, className }) => {
+          const isBlock = Boolean(className);
+          if (isBlock) {
+            return (
+              <code
+                style={{
+                  display: "block",
+                  whiteSpace: "pre-wrap",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  background: "rgba(23, 33, 43, 0.06)",
+                  border: "1px solid rgba(23, 33, 43, 0.08)",
+                  overflowX: "auto",
+                  fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+                }}
+              >
+                {children}
+              </code>
+            );
+          }
+
+          return (
+            <code
+              style={{
+                padding: "0.15em 0.4em",
+                borderRadius: 6,
+                background: "rgba(23, 33, 43, 0.08)",
+                fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+              }}
+            >
+              {children}
+            </code>
+          );
+        },
+        ul: ({ children }) => <ul style={{ margin: "0 0 0.85em", paddingLeft: "1.4em" }}>{children}</ul>,
+        ol: ({ children }) => <ol style={{ margin: "0 0 0.85em", paddingLeft: "1.4em" }}>{children}</ol>,
+        li: ({ children }) => <li style={{ margin: "0.25em 0" }}>{children}</li>,
+        blockquote: ({ children }) => (
+          <blockquote style={{ margin: "0 0 0.85em", paddingLeft: 14, borderLeft: "3px solid rgba(23, 33, 43, 0.18)", color: "var(--muted)" }}>
+            {children}
+          </blockquote>
+        ),
+        table: ({ children }) => (
+          <div style={{ overflowX: "auto", margin: "0 0 0.85em" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%" }}>{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th style={{ border: "1px solid rgba(23, 33, 43, 0.12)", padding: "8px 10px", textAlign: "left", background: "rgba(23, 33, 43, 0.04)" }}>
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td style={{ border: "1px solid rgba(23, 33, 43, 0.12)", padding: "8px 10px", verticalAlign: "top" }}>
+            {children}
+          </td>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   );
 }
 
@@ -646,8 +734,8 @@ export function GoalEditor({
                       Close
                     </button>
                   </header>
-                  <div style={{ padding: 20, overflowY: "auto", flexGrow: 1, whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.6 }}>
-                    {activeArtifact.content}
+                  <div style={{ padding: 20, overflowY: "auto", flexGrow: 1, fontSize: 14, lineHeight: 1.6 }}>
+                    <MarkdownMessage content={activeArtifact.content} />
                   </div>
                 </>
               );
