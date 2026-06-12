@@ -628,6 +628,156 @@ async function summarizeContext(supabase: SupabaseClient, params: JsonObject) {
   };
 }
 
+async function bulkAddGoalData(supabase: SupabaseClient, params: JsonObject) {
+  const goalId = cleanString(params.goal_id);
+  const userId = cleanString(params.user_id);
+  if (!goalId) throw new Error("goal_id is required");
+  if (!userId) throw new Error("user_id is required");
+
+  // Verify ownership
+  const { data: goal, error: goalError } = await supabase
+    .from("goals")
+    .select("id")
+    .eq("id", goalId)
+    .eq("user_id", userId)
+    .single();
+
+  if (goalError || !goal) throw new Error("Goal not found or access denied");
+
+  // 1. Update goal if goal_update is provided
+  if (params.goal_update && typeof params.goal_update === "object") {
+    const updateData: any = {};
+    const updates = params.goal_update as JsonObject;
+    if (typeof updates.title === "string") updateData.title = updates.title;
+    if (typeof updates.description === "string") updateData.description = updates.description;
+    if (typeof updates.background === "string") updateData.background = updates.background;
+    if (typeof updates.status === "string") updateData.status = updates.status;
+
+    if (Object.keys(updateData).length > 0) {
+      await supabase.from("goals").update(updateData).eq("id", goalId).eq("user_id", userId);
+    }
+  }
+
+  const results = {
+    subjects_created: 0,
+    issues_created: 0,
+    tasks_created: 0
+  };
+
+  // 2. Insert Subjects and nested Items
+  if (Array.isArray(params.subjects)) {
+    for (const sub of params.subjects) {
+      if (typeof sub.title !== "string") continue;
+      const { data: subjectData } = await supabase
+        .from("subjects")
+        .insert({
+          goal_id: goalId,
+          user_id: userId,
+          title: sub.title,
+          description: sub.description || null,
+          status: sub.status || "active"
+        })
+        .select("id")
+        .single();
+      
+      if (!subjectData) continue;
+      results.subjects_created++;
+
+      if (Array.isArray(sub.issues)) {
+        for (const iss of sub.issues) {
+          if (typeof iss.title !== "string") continue;
+          const { data: issueData } = await supabase
+            .from("issues")
+            .insert({
+              goal_id: goalId,
+              subject_id: subjectData.id,
+              user_id: userId,
+              title: iss.title,
+              description: iss.description || null,
+              severity: iss.severity || "medium",
+              status: iss.status || "open"
+            })
+            .select("id")
+            .single();
+
+          if (!issueData) continue;
+          results.issues_created++;
+
+          if (Array.isArray(iss.tasks)) {
+            for (const tsk of iss.tasks) {
+              if (typeof tsk.title !== "string") continue;
+              await supabase.from("tasks").insert({
+                goal_id: goalId,
+                subject_id: subjectData.id,
+                issue_id: issueData.id,
+                user_id: userId,
+                title: tsk.title,
+                description: tsk.description || null,
+                status: tsk.status || "todo"
+              });
+              results.tasks_created++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Insert Unassigned Issues
+  if (Array.isArray(params.unassigned_issues)) {
+    for (const iss of params.unassigned_issues) {
+      if (typeof iss.title !== "string") continue;
+      const { data: issueData } = await supabase
+        .from("issues")
+        .insert({
+          goal_id: goalId,
+          user_id: userId,
+          title: iss.title,
+          description: iss.description || null,
+          severity: iss.severity || "medium",
+          status: iss.status || "open"
+        })
+        .select("id")
+        .single();
+
+      if (!issueData) continue;
+      results.issues_created++;
+
+      if (Array.isArray(iss.tasks)) {
+        for (const tsk of iss.tasks) {
+          if (typeof tsk.title !== "string") continue;
+          await supabase.from("tasks").insert({
+            goal_id: goalId,
+            issue_id: issueData.id,
+            user_id: userId,
+            title: tsk.title,
+            description: tsk.description || null,
+            status: tsk.status || "todo"
+          });
+          results.tasks_created++;
+        }
+      }
+    }
+  }
+
+  // 4. Insert Unassigned Tasks
+  if (Array.isArray(params.unassigned_tasks)) {
+    for (const tsk of params.unassigned_tasks) {
+      if (typeof tsk.title !== "string") continue;
+      await supabase.from("tasks").insert({
+        goal_id: goalId,
+        user_id: userId,
+        title: tsk.title,
+        description: tsk.description || null,
+        status: tsk.status || "todo"
+      });
+      results.tasks_created++;
+    }
+  }
+
+  return { success: true, results };
+}
+
 const TOOL_HANDLERS = new Map<string, (supabase: SupabaseClient, params: JsonObject) => Promise<any>>([
   ["list_goals", listGoals],
   ["create_goal", createGoal],
@@ -647,6 +797,7 @@ const TOOL_HANDLERS = new Map<string, (supabase: SupabaseClient, params: JsonObj
   ["create_event", createEvent],
   ["list_events", listEvents],
   ["summarize_context", summarizeContext],
+  ["bulk_add_goal_data", bulkAddGoalData],
 ]);
 
 export async function executeTool(name: string, args: JsonObject, userId: string): Promise<any> {

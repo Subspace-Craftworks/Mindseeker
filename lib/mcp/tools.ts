@@ -257,5 +257,106 @@ export const MCP_TOOLS = [
         subject_id: { type: "string" }
       }
     }
+  },
+  {
+    name: "bulk_add_goal_data",
+    description: "Bulk add new subjects, issues, and tasks to an existing goal in a structured hierarchical way. Useful for expanding or reorganizing a goal. Does NOT delete existing items.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        goal_id: { type: "string", description: "ID of the target goal" },
+        goal_update: {
+          type: "object",
+          description: "Optional updates to the goal itself",
+          properties: {
+            title: { type: "string" },
+            description: { type: "string" },
+            background: { type: "string" },
+            status: { type: "string" }
+          }
+        },
+        subjects: {
+          type: "array",
+          description: "List of new subjects to create",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              status: { type: "string" },
+              issues: {
+                type: "array",
+                description: "List of new issues under this subject",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    severity: { type: "string" },
+                    status: { type: "string" },
+                    tasks: {
+                      type: "array",
+                      description: "List of new tasks under this issue",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string" },
+                          description: { type: "string" },
+                          status: { type: "string" }
+                        },
+                        required: ["title"]
+                      }
+                    }
+                  },
+                  required: ["title"]
+                }
+              }
+            },
+            required: ["title"]
+          }
+        },
+        unassigned_issues: {
+          type: "array",
+          description: "List of new issues not assigned to any subject",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              severity: { type: "string" },
+              status: { type: "string" },
+              tasks: {
+                type: "array",
+                description: "List of new tasks under this issue",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    status: { type: "string" }
+                  },
+                  required: ["title"]
+                }
+              }
+            },
+            required: ["title"]
+          }
+        },
+        unassigned_tasks: {
+          type: "array",
+          description: "List of new tasks not assigned to any subject or issue",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              status: { type: "string" }
+            },
+            required: ["title"]
+          }
+        }
+      },
+      required: ["goal_id"]
+    }
   }
 ];
