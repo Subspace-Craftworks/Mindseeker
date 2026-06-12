@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { MCP_TOOLS } from "@/lib/mcp/tools";
+import { executeTool } from "@/lib/mcp/handlers";
 
 type JsonObject = Record<string, unknown>;
 type JsonRpcRequest = {
@@ -27,19 +29,6 @@ function result(id: JsonRpcRequest["id"], value: unknown): NextResponse {
 function error(id: JsonRpcRequest["id"], code: number, message: string): NextResponse {
   return json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
 }
-
-const tools = [
-  {
-    name: "mindseeker_ping",
-    description: "Check whether the Mindseeker MCP server is reachable.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        message: { type: "string", description: "Optional message to echo" },
-      },
-    },
-  },
-];
 
 function textContent(value: unknown) {
   return {
@@ -106,7 +95,21 @@ export async function POST(req: NextRequest) {
       return new NextResponse(null, { status: 202, headers });
 
     case "tools/list":
-      return result(body.id, { tools });
+      return result(body.id, {
+        tools: [
+          {
+            name: "mindseeker_ping",
+            description: "Check whether the Mindseeker MCP server is reachable.",
+            inputSchema: {
+              type: "object",
+              properties: {
+                message: { type: "string", description: "Optional message to echo" },
+              },
+            },
+          },
+          ...MCP_TOOLS
+        ]
+      });
 
     case "tools/call": {
       const params = body.params ?? {};
@@ -115,17 +118,22 @@ export async function POST(req: NextRequest) {
         ? params.arguments as JsonObject
         : {};
 
-      if (name !== "mindseeker_ping") {
-        return error(body.id, -32602, `Unknown tool: ${name}`);
+      if (name === "mindseeker_ping") {
+        return result(body.id, textContent({
+          ok: true,
+          server: "mindseeker-mcp-vercel",
+          user_id: userId,
+          message: typeof args.message === "string" ? args.message : "pong",
+          timestamp: new Date().toISOString(),
+        }));
       }
 
-      return result(body.id, textContent({
-        ok: true,
-        server: "mindseeker-mcp-vercel",
-        user_id: userId,
-        message: typeof args.message === "string" ? args.message : "pong",
-        timestamp: new Date().toISOString(),
-      }));
+      try {
+        const payload = await executeTool(name, args, userId);
+        return result(body.id, textContent(payload));
+      } catch (err: any) {
+        return error(body.id, -32603, err.message || "Internal Tool Error");
+      }
     }
 
     default:
