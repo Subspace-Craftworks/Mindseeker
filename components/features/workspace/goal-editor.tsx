@@ -7,6 +7,7 @@ export type GoalRecord = {
   user_id: string | null;
   title: string;
   description: string | null;
+  background: string | null;
   status: string;
   created_at: string;
   updated_at: string;
