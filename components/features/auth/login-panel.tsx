@@ -5,7 +5,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 import { useSearchParams } from "next/navigation";
 
-async function signIn(provider: "google" | "github", nextPath: string = "/chat") {
+async function signIn(provider: "google" | "github", nextPath: string = "/") {
   const supabase = createBrowserSupabaseClient();
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -23,7 +23,7 @@ export function LoginPanel() {
   const [loading, setLoading] = useState<"google" | "github" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || "/chat";
+  const nextPath = searchParams.get("next") || "/";
 
   async function handleSignIn(provider: "google" | "github") {
     setLoading(provider);
