@@ -63,6 +63,7 @@ function RecordListItem({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const entries = Object.entries(item).filter(([k]) => !["id", "user_id", "goal_id", "created_at", "updated_at", "status", "subject_id", "issue_id"].includes(k));
@@ -71,7 +72,7 @@ function RecordListItem({
   const title = titlePair ? titlePair[1] : item.id ? String(item.id) : `Item ${index + 1}`;
 
   return (
-    <div style={{ padding: "0 4px" }}>
+    <div style={{ padding: "0 4px", opacity: deleting ? 0.3 : 1, pointerEvents: deleting ? "none" : "auto", transition: "opacity 0.2s" }}>
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -149,7 +150,7 @@ function RecordListItem({
                 disabled={updating}
                 onClick={async () => {
                   if (!window.confirm("Delete this record?")) return;
-                  setUpdating(true);
+                  setDeleting(true);
                   setErrorMsg(null);
                   try {
                     const res = await fetch(`/api/records/${table}/${item.id}`, {
@@ -160,7 +161,7 @@ function RecordListItem({
                     onRefresh();
                   } catch (e) {
                     setErrorMsg("Failed to delete");
-                    setUpdating(false);
+                    setDeleting(false);
                   }
                 }}
                 style={{

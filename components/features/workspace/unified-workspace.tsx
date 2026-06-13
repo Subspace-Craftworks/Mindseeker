@@ -1368,7 +1368,11 @@ export function UnifiedWorkspace() {
             ))
           )}
           {sending ? (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>Sending message...</div>
+            <div className="typing-indicator" style={{ alignSelf: "flex-start" }}>
+              <div className="typing-dot" />
+              <div className="typing-dot" />
+              <div className="typing-dot" />
+            </div>
           ) : null}
         </div>
 
