@@ -1208,6 +1208,7 @@ export function UnifiedWorkspace() {
                           fontSize: 14,
                           fontWeight: 300,
                           lineHeight: 1,
+                          flexShrink: 0,
                         }}
                       >
                         ×
@@ -1411,6 +1412,14 @@ export function UnifiedWorkspace() {
               color: "var(--text)",
               fontFamily: "inherit",
               lineHeight: 1.7,
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!sending && draft.trim().length > 0) {
+                  void handleSend();
+                }
+              }
             }}
           />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
