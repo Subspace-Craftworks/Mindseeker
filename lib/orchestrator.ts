@@ -17,14 +17,19 @@ export function extractOrchestrationPayload(answer: string): OrchestrationPayloa
   // Look for a JSON block like ```json ... ```
   const match = answer.match(/```json\s*([\s\S]*?)\s*```/);
   if (!match) {
-    // Fallback: Check if the whole answer is JSON
+    // Fallback: Check if the answer contains a JSON object
     try {
-      const parsed = JSON.parse(answer.trim());
-      if (parsed && Array.isArray(parsed.operations)) {
-        return parsed as OrchestrationPayload;
+      const firstBrace = answer.indexOf('{');
+      const lastBrace = answer.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonStr = answer.substring(firstBrace, lastBrace + 1);
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && Array.isArray(parsed.operations)) {
+          return parsed as OrchestrationPayload;
+        }
       }
     } catch {
-      // Not pure JSON
+      // Not valid JSON
     }
     return null;
   }
@@ -53,13 +58,16 @@ export async function executeOperations(
   }
 
   let newGoalId: string | null = null;
+  let newSubjectId: string | null = null;
+  let newIssueId: string | null = null;
+  let newTaskId: string | null = null;
 
   if (Array.isArray(payload.operations) && payload.operations.length > 0) {
     console.log(`Executing ${payload.operations.length} orchestration operations...`);
 
   for (const op of payload.operations) {
     try {
-      // Resolve "NEW" goal_id placeholder
+      // Resolve "NEW" placeholders
       if (op.params && typeof op.params === "object") {
         if (op.params.goal_id === "NEW") {
           if (newGoalId) {
@@ -71,16 +79,39 @@ export async function executeOperations(
             throw new Error(`Cannot resolve "NEW" goal_id because no goal was created in this turn.`);
           }
         }
+        if (op.params.subject_id === "NEW") {
+          if (newSubjectId) {
+            op.params.subject_id = newSubjectId;
+          } else {
+            throw new Error(`Cannot resolve "NEW" subject_id because no subject was created in this turn.`);
+          }
+        }
+        if (op.params.issue_id === "NEW") {
+          if (newIssueId) {
+            op.params.issue_id = newIssueId;
+          } else {
+            throw new Error(`Cannot resolve "NEW" issue_id because no issue was created in this turn.`);
+          }
+        }
+        if (op.params.task_id === "NEW") {
+          if (newTaskId) {
+            op.params.task_id = newTaskId;
+          } else {
+            throw new Error(`Cannot resolve "NEW" task_id because no task was created in this turn.`);
+          }
+        }
       }
 
       console.log(`Executing tool: ${op.action}`, op.params);
       
       const result = await executeTool(op.action, op.params, userId);
 
-      // If this was a create_goal action, capture the ID so subsequent tasks can link to it
-      if (op.action === "create_goal" && result && result.id) {
-        newGoalId = result.id;
-        console.log(`Captured new goal ID: ${newGoalId}`);
+      // Capture newly created IDs
+      if (result && result.id) {
+        if (op.action === "create_goal") newGoalId = result.id;
+        else if (op.action === "create_subject") newSubjectId = result.id;
+        else if (op.action === "create_issue") newIssueId = result.id;
+        else if (op.action === "create_task") newTaskId = result.id;
       }
 
     } catch (error) {
