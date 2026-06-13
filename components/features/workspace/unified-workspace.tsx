@@ -1186,9 +1186,6 @@ export function UnifiedWorkspace() {
                     }}
                   >
                     <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flexGrow: 1, fontWeight: selected ? 600 : 400, fontSize: 13, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {thread.title || "New conversation"}
-                      </div>
                       <div
                         role="button"
                         tabIndex={0}
@@ -1212,6 +1209,9 @@ export function UnifiedWorkspace() {
                         }}
                       >
                         ×
+                      </div>
+                      <div style={{ flexGrow: 1, fontWeight: selected ? 600 : 400, fontSize: 13, lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {thread.title || "New conversation"}
                       </div>
                     </div>
                   </button>
