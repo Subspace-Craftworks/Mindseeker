@@ -897,7 +897,8 @@ export async function getGoalContextText(goalId: string, userId: string): Promis
   try {
     const payload = await summarizeContext(supabase, { goal_id: goalId, user_id: userId });
     
-    let text = `Goal [ID: ${payload.goal?.id}]: ${payload.goal?.title}\n`;
+    let text = `current_goal_id=${payload.goal?.id}\n`;
+    text += `Goal Title: ${payload.goal?.title}\n`;
     if (payload.goal?.description) text += `Description: ${payload.goal.description}\n`;
     text += `Status: ${payload.goal?.status}\n\n`;
 
