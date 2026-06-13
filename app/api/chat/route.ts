@@ -6,6 +6,7 @@ import { requireSupabaseUser } from "@/lib/auth";
 import { upsertChatThread } from "@/lib/db/chat-threads";
 import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/utils/env";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { executeOperations } from "@/lib/orchestrator";
 
 type StreamEvent =
   | {
@@ -304,6 +305,14 @@ export async function POST(req: NextRequest) {
               appKey: "mindseeker",
               currentGoalId: extractedGoalId,
             });
+
+            // Execute JSON orchestration if any
+            try {
+              const currentGoalIdForOrchestration = extractedGoalId || currentGoalIdStr || undefined;
+              await executeOperations(answer, user.id, currentGoalIdForOrchestration);
+            } catch (err) {
+              console.error("Orchestration failed:", err);
+            }
           }
 
           controller.enqueue(
