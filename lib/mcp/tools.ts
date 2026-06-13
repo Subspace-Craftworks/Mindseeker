@@ -358,5 +358,64 @@ export const MCP_TOOLS = [
       },
       required: ["goal_id"]
     }
+  },
+  {
+    name: "list_artifacts",
+    description: "List artifacts for the user.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        goal_id: { type: "string", description: "Filter by goal_id" },
+        limit: { type: "number" }
+      }
+    }
+  },
+  {
+    name: "get_artifact",
+    description: "Get detailed information and markdown content of an artifact.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifact_id: { type: "string", description: "ID of the artifact" }
+      },
+      required: ["artifact_id"]
+    }
+  },
+  {
+    name: "create_artifact",
+    description: "Create a new artifact (markdown document).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        goal_id: { type: "string", description: "ID of the related goal" },
+        title: { type: "string", description: "Title of the artifact" },
+        content: { type: "string", description: "Markdown content of the artifact" }
+      },
+      required: ["goal_id", "title", "content"]
+    }
+  },
+  {
+    name: "update_artifact",
+    description: "Update an existing artifact.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifact_id: { type: "string", description: "ID of the artifact to update" },
+        title: { type: "string" },
+        content: { type: "string" }
+      },
+      required: ["artifact_id"]
+    }
+  },
+  {
+    name: "delete_artifact",
+    description: "Delete an artifact.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifact_id: { type: "string", description: "ID of the artifact to delete" }
+      },
+      required: ["artifact_id"]
+    }
   }
 ];

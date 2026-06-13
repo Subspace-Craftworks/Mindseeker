@@ -778,6 +778,81 @@ async function bulkAddGoalData(supabase: SupabaseClient, params: JsonObject) {
   return { success: true, results };
 }
 
+async function listArtifacts(supabase: SupabaseClient, params: JsonObject) {
+  const userId = cleanString(params.user_id);
+  if (!userId) throw new Error("user_id is required");
+
+  let query = supabase.from("artifacts").select("id, goal_id, title, created_at, updated_at").eq("user_id", userId).order("updated_at", { ascending: false });
+  const goalId = cleanString(params.goal_id);
+  if (goalId) query = query.eq("goal_id", goalId);
+  const { data, error } = await query.limit(toInt(params.limit, 20, 1, 100));
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function getArtifact(supabase: SupabaseClient, params: JsonObject) {
+  const artifactId = cleanString(params.artifact_id);
+  const userId = cleanString(params.user_id);
+  if (!artifactId) throw new Error("artifact_id is required");
+
+  const { data, error } = await supabase.from("artifacts").select("*").eq("id", artifactId).eq("user_id", userId).single();
+  if (error) throw error;
+  return data;
+}
+
+async function createArtifact(supabase: SupabaseClient, params: JsonObject) {
+  const goalId = cleanString(params.goal_id);
+  const title = cleanString(params.title);
+  const content = cleanString(params.content);
+  const userId = cleanString(params.user_id);
+
+  if (!goalId) throw new Error("goal_id is required");
+  if (!title) throw new Error("title is required");
+  if (!content) throw new Error("content is required");
+  if (!userId) throw new Error("user_id is required");
+
+  const { data, error } = await supabase.from("artifacts").insert({
+    user_id: userId,
+    goal_id: goalId,
+    title,
+    content
+  }).select("*").single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function updateArtifact(supabase: SupabaseClient, params: JsonObject) {
+  const artifactId = cleanString(params.artifact_id);
+  const userId = cleanString(params.user_id);
+  if (!artifactId) throw new Error("artifact_id is required");
+
+  const patch: any = {};
+  const title = cleanString(params.title);
+  const content = cleanString(params.content);
+  
+  if (title) patch.title = title;
+  if (content) patch.content = content;
+
+  if (Object.keys(patch).length === 0) throw new Error("At least one field to update is required");
+
+  const { data, error } = await supabase.from("artifacts").update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", artifactId).eq("user_id", userId).select("*").single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function deleteArtifact(supabase: SupabaseClient, params: JsonObject) {
+  const artifactId = cleanString(params.artifact_id);
+  const userId = cleanString(params.user_id);
+  if (!artifactId) throw new Error("artifact_id is required");
+
+  const { error } = await supabase.from("artifacts").delete().eq("id", artifactId).eq("user_id", userId);
+  if (error) throw error;
+  return { success: true };
+}
+
 const TOOL_HANDLERS = new Map<string, (supabase: SupabaseClient, params: JsonObject) => Promise<any>>([
   ["list_goals", listGoals],
   ["create_goal", createGoal],
@@ -798,6 +873,11 @@ const TOOL_HANDLERS = new Map<string, (supabase: SupabaseClient, params: JsonObj
   ["list_events", listEvents],
   ["summarize_context", summarizeContext],
   ["bulk_add_goal_data", bulkAddGoalData],
+  ["list_artifacts", listArtifacts],
+  ["get_artifact", getArtifact],
+  ["create_artifact", createArtifact],
+  ["update_artifact", updateArtifact],
+  ["delete_artifact", deleteArtifact],
 ]);
 
 export async function executeTool(name: string, args: JsonObject, userId: string): Promise<any> {

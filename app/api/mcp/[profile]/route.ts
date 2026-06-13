@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { MCP_TOOLS } from "@/lib/mcp/tools";
 import { executeTool } from "@/lib/mcp/handlers";
+import { MCP_PROFILES } from "@/lib/mcp/profiles";
 
 type JsonObject = Record<string, unknown>;
 type JsonRpcRequest = {
@@ -45,7 +46,7 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers });
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ profile: string }> }) {
   // 1. Authenticate Request
   const authHeader = req.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -70,6 +71,18 @@ export async function POST(req: NextRequest) {
     return json({ error: "Invalid or expired token" }, 401);
   }
 
+  // 1.5 Parse Profile
+  const { profile } = await params;
+  const allowedToolsConfig = MCP_PROFILES[profile] || [];
+  
+  const isAllowed = (toolName: string) => {
+    if (toolName === "mindseeker_ping") return true;
+    if (allowedToolsConfig === "*") return true;
+    return allowedToolsConfig.includes(toolName);
+  };
+
+  const activeTools = MCP_TOOLS.filter(t => isAllowed(t.name));
+
   // 2. Parse JSON-RPC
   let body: JsonRpcRequest;
   try {
@@ -87,7 +100,7 @@ export async function POST(req: NextRequest) {
     case "initialize":
       return result(body.id, {
         protocolVersion: "2025-03-26",
-        serverInfo: { name: "mindseeker-mcp-vercel", version: "0.1.0" },
+        serverInfo: { name: `mindseeker-mcp-vercel (${profile})`, version: "0.1.0" },
         capabilities: { tools: {} },
       });
 
@@ -107,21 +120,25 @@ export async function POST(req: NextRequest) {
               },
             },
           },
-          ...MCP_TOOLS
+          ...activeTools
         ]
       });
 
     case "tools/call": {
-      const params = body.params ?? {};
-      const name = typeof params.name === "string" ? params.name : "";
-      const args = params.arguments && typeof params.arguments === "object" && !Array.isArray(params.arguments)
-        ? params.arguments as JsonObject
+      const callParams = body.params ?? {};
+      const name = typeof callParams.name === "string" ? callParams.name : "";
+      const args = callParams.arguments && typeof callParams.arguments === "object" && !Array.isArray(callParams.arguments)
+        ? callParams.arguments as JsonObject
         : {};
+
+      if (!isAllowed(name)) {
+        return error(body.id, -32601, `Method not allowed in profile '${profile}': ${name}`);
+      }
 
       if (name === "mindseeker_ping") {
         return result(body.id, textContent({
           ok: true,
-          server: "mindseeker-mcp-vercel",
+          server: `mindseeker-mcp-vercel (${profile})`,
           user_id: userId,
           message: typeof args.message === "string" ? args.message : "pong",
           timestamp: new Date().toISOString(),
