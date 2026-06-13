@@ -1,27 +1,29 @@
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
+export function getPublicSupabaseUrl() {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  if (!value) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
   return value;
 }
 
-export function getPublicSupabaseUrl() {
-  return required("NEXT_PUBLIC_SUPABASE_URL");
-}
-
 export function getPublicSupabaseAnonKey() {
-  return required("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!value) throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  return value;
 }
 
 export function getSupabaseServiceRoleKey() {
-  return required("SUPABASE_SERVICE_ROLE_KEY");
+  const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!value) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  return value;
 }
 
 export function getDifyApiBaseUrl() {
-  return required("DIFY_API_BASE_URL");
+  const value = process.env.DIFY_API_BASE_URL;
+  if (!value) throw new Error("Missing DIFY_API_BASE_URL");
+  return value;
 }
 
 export function getDifyApiKey() {
-  return required("DIFY_API_KEY");
+  const value = process.env.DIFY_API_KEY;
+  if (!value) throw new Error("Missing DIFY_API_KEY");
+  return value;
 }
