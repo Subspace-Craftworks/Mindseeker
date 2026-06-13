@@ -439,6 +439,29 @@ export function GoalEditor({
     }
   }
 
+  async function handleCreateRecord(table: string) {
+    const title = window.prompt(`Enter title for new ${table.replace(/s$/, "")}:`);
+    if (!title?.trim()) return;
+    try {
+      const res = await fetch(`/api/records/${table}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          goal_id: detail.goal.id,
+          title: title.trim(),
+          status: table === "events" ? undefined : table === "tasks" ? "todo" : "active"
+        })
+      });
+      if (!res.ok) throw new Error("Failed to create record");
+      onSaved(detail.goal); // trigger refresh
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error creating record");
+    }
+  }
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* ── Editor form ── */}
@@ -628,11 +651,28 @@ export function GoalEditor({
           ] as const
         ).map(({ label, table, items }) => (
           <div key={label}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
-              {label}
-              <span style={{ marginLeft: 6, fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-                ({items.length})
-              </span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                {label}
+                <span style={{ marginLeft: 6, fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
+                  ({items.length})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleCreateRecord(table)}
+                style={{
+                  padding: "2px 8px",
+                  fontSize: 11,
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--line)",
+                  background: "transparent",
+                  color: "var(--text)",
+                  cursor: "pointer",
+                }}
+              >
+                + Add {label.replace(/s$/, "")}
+              </button>
             </div>
             <RenderRecordList
               items={items as Record<string, unknown>[]}
