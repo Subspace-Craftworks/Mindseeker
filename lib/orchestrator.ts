@@ -6,6 +6,7 @@ export type Operation = {
 };
 
 export type OrchestrationPayload = {
+  current_goal_id?: string;
   operations?: Operation[];
 };
 
@@ -45,15 +46,16 @@ export async function executeOperations(
   answer: string,
   userId: string,
   currentGoalIdFromContext?: string
-): Promise<void> {
+): Promise<{ resolvedCurrentGoalId?: string }> {
   const payload = extractOrchestrationPayload(answer);
-  if (!payload || !Array.isArray(payload.operations) || payload.operations.length === 0) {
-    return;
+  if (!payload) {
+    return {};
   }
 
-  console.log(`Executing ${payload.operations.length} orchestration operations...`);
-
   let newGoalId: string | null = null;
+
+  if (Array.isArray(payload.operations) && payload.operations.length > 0) {
+    console.log(`Executing ${payload.operations.length} orchestration operations...`);
 
   for (const op of payload.operations) {
     try {
@@ -86,6 +88,20 @@ export async function executeOperations(
       // We continue executing the rest of the operations even if one fails
     }
   }
+  }
   
-  console.log("Orchestration complete.");
+  let resolvedCurrentGoalId: string | undefined = undefined;
+  if (payload.current_goal_id) {
+    if (payload.current_goal_id === "NEW") {
+      resolvedCurrentGoalId = newGoalId || undefined;
+      if (!resolvedCurrentGoalId) {
+        console.warn(`current_goal_id was NEW, but no goal was created. Falling back to context.`);
+      }
+    } else {
+      resolvedCurrentGoalId = payload.current_goal_id;
+    }
+  }
+
+  console.log("Orchestration complete.", { resolvedCurrentGoalId });
+  return { resolvedCurrentGoalId };
 }

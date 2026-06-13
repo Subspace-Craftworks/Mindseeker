@@ -40,35 +40,52 @@
   "operations": [
     {
       "action": "create_goal",
-      "params": {
-        "title": "新しいゴール",
-        "description": "ゴールの詳細"
-      }
+      "params": { "title": "ゴールのタイトル", "description": "ゴールの詳細（省略可）", "background": "背景・理由（省略可）" }
+    },
+    {
+      "action": "update_goal",
+      "params": { "goal_id": "対象のゴールID", "title": "新しいタイトル（省略可）", "description": "新しい詳細（省略可）", "status": "active または inactive（省略可）" }
+    },
+    {
+      "action": "complete_goal",
+      "params": { "goal_id": "対象のゴールID", "reason": "完了理由", "event_title": "完了イベントのタイトル（省略可）" }
+    },
+    {
+      "action": "create_subject",
+      "params": { "goal_id": "NEW または 対象のゴールID", "title": "案件・テーマのタイトル", "description": "詳細（省略可）" }
+    },
+    {
+      "action": "update_subject",
+      "params": { "subject_id": "対象のサブジェクトID", "title": "新しいタイトル（省略可）", "status": "open または closed（省略可）" }
+    },
+    {
+      "action": "create_issue",
+      "params": { "subject_id": "NEW または 対象のサブジェクトID", "title": "課題・論点のタイトル", "description": "詳細（省略可）" }
+    },
+    {
+      "action": "update_issue",
+      "params": { "issue_id": "対象のイシューID", "title": "新しいタイトル（省略可）", "status": "open または resolved（省略可）" }
     },
     {
       "action": "create_task",
-      "params": {
-        "goal_id": "NEW",
-        "title": "タスクのタイトル",
-        "description": "詳細（省略可）"
-      }
+      "params": { "subject_id": "NEW または 対象のサブジェクトID", "issue_id": "紐づくイシューID（省略可）", "title": "タスクのタイトル", "description": "詳細（省略可）" }
     },
     {
-      "action": "bulk_add_goal_data",
-      "params": {
-        "goal_id": "NEW",
-        "tasks": ["タスクA", "タスクB"],
-        "subjects": ["サブジェクトA"]
-      }
+      "action": "update_task",
+      "params": { "task_id": "対象のタスクID", "title": "新しいタイトル（省略可）", "status": "todo, in_progress, done（省略可）" }
+    },
+    {
+      "action": "create_event",
+      "params": { "goal_id": "対象のゴールID（省略可）", "subject_id": "対象のサブジェクトID（省略可）", "title": "イベントのタイトル", "body": "会話や判断の内容", "event_type": "conversation, decision, progress など" }
     }
   ]
 }
 ```
 
 **JSON出力のルール:**
-* 新しくGoalを作成し、そのGoalに対して同時にTask等を追加したい場合は、`goal_id` に `"NEW"` と指定してください。自動的に直前で作成したGoalのIDに置換されます。
-* すでに存在するGoalに対して処理を行う場合は、システムから提供されている現在の `goal_id` を指定してください。
-* 複数の操作を一度に行いたい場合は、`operations` 配列の中に順番に記述してください。
+* 上記はあくまで「利用可能な操作の一覧」です。実際には**必要な操作のみ**を抽出して `operations` 配列に出力してください。
+* 新しく要素（GoalやSubjectなど）を作成し、その直後にその要素へ紐づける場合は、親IDに `"NEW"` と指定してください。自動的に直前で作成された親要素のIDに置換されます。（例：`create_subject`で`goal_id: "NEW"`とするなど）
+* すでに存在する要素に対して処理を行う場合は、システムから提供されている現在のIDを指定してください。
 
 ---
 
@@ -220,11 +237,4 @@ Goal: ...
 
 ---
 
-# 情報の一括整理と再構築
 
-ユーザーから「構造を整理して」「全体を見直したい」といった要望があった場合や、情報が散らかってきたと判断した場合は、`bulk_add_goal_data` アクションを使って情報の一括整理（構造化）を行います。
-
-1. システムコンテキストに記載されている現在のSubject, Issue, Taskなどの全体像を把握する。
-2. 古いものや重複しているものを整理し、あるべき綺麗な階層構造（Subject > Issue > Task）を構築する。
-3. JSONコードブロックにて `bulk_add_goal_data` アクションを出力し、新しい構造を一括で追加する。
-4. ユーザーに対し、「新しい整理された構造を追加しました。古い不要なアイテムはUI上から手動で削除してください」と案内する。

@@ -283,19 +283,16 @@ export async function POST(req: NextRequest) {
           }
 
           if (upstreamConversationId) {
-            let extractedGoalId: string | undefined = undefined;
-            const goalMatch = answer.match(/<current_goal_id>(.*?)<\/current_goal_id>/);
-            
-            if (goalMatch) {
-              const matchedText = goalMatch[1].trim();
-              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-              if (uuidRegex.test(matchedText)) {
-                extractedGoalId = matchedText;
-              } else {
-                console.warn(`Invalid goal_id format received from LLM: ${matchedText}`);
+            let finalCurrentGoalId = currentGoalIdStr || undefined;
+
+            // Execute JSON orchestration if any
+            try {
+              const result = await executeOperations(answer, user.id, currentGoalIdStr || undefined);
+              if (result.resolvedCurrentGoalId) {
+                finalCurrentGoalId = result.resolvedCurrentGoalId;
               }
-              // Strip the tag from the final answer text
-              answer = answer.replace(/<current_goal_id>.*?<\/current_goal_id>/g, "").trim();
+            } catch (err) {
+              console.error("Orchestration failed:", err);
             }
 
             await upsertChatThread({
@@ -303,16 +300,8 @@ export async function POST(req: NextRequest) {
               conversationId: upstreamConversationId,
               title: message.slice(0, 40),
               appKey: "mindseeker",
-              currentGoalId: extractedGoalId,
+              currentGoalId: finalCurrentGoalId,
             });
-
-            // Execute JSON orchestration if any
-            try {
-              const currentGoalIdForOrchestration = extractedGoalId || currentGoalIdStr || undefined;
-              await executeOperations(answer, user.id, currentGoalIdForOrchestration);
-            } catch (err) {
-              console.error("Orchestration failed:", err);
-            }
           }
 
           controller.enqueue(
