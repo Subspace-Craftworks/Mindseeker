@@ -79,11 +79,33 @@ export async function executeOperations(
             throw new Error(`Cannot resolve "NEW" goal_id because no goal was created in this turn.`);
           }
         }
-        if (op.params.subject_id === "NEW") {
+        if (op.params.subject_id === "NEW" || ((op.action === "create_issue" || op.action === "create_task") && !op.params.subject_id)) {
           if (newSubjectId) {
             op.params.subject_id = newSubjectId;
           } else {
-            throw new Error(`Cannot resolve "NEW" subject_id because no subject was created in this turn.`);
+            // Auto fallback: find or create a default subject
+            const fallbackGoalId = newGoalId || currentGoalIdFromContext;
+            if (fallbackGoalId) {
+              console.log("Fallback: attempting to auto-resolve subject_id...");
+              try {
+                const subjects = await executeTool("list_subjects", { goal_id: fallbackGoalId, limit: 1 }, userId);
+                if (Array.isArray(subjects) && subjects.length > 0) {
+                  newSubjectId = subjects[0].id;
+                } else {
+                  console.log("Fallback: no subject found, creating '一般' subject...");
+                  const created = await executeTool("create_subject", { goal_id: fallbackGoalId, title: "一般" }, userId);
+                  if (created && created.id) {
+                    newSubjectId = created.id;
+                  }
+                }
+                op.params.subject_id = newSubjectId;
+              } catch (fallbackErr) {
+                console.error("Fallback for subject_id failed:", fallbackErr);
+              }
+            }
+            if (!op.params.subject_id) {
+              throw new Error(`Cannot resolve "NEW" subject_id and auto-fallback failed.`);
+            }
           }
         }
         if (op.params.issue_id === "NEW") {
