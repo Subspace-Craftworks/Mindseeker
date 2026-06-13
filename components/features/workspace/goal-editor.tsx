@@ -56,6 +56,8 @@ function RecordListItem({
   onRefresh,
   activeSubjectId,
   onSubjectClick,
+  allIssues,
+  allTasks,
 }: {
   item: Record<string, unknown>;
   index: number;
@@ -64,6 +66,8 @@ function RecordListItem({
   onRefresh: () => void;
   activeSubjectId?: string | null;
   onSubjectClick?: (id: string, isOpen: boolean) => void;
+  allIssues?: Record<string, unknown>[];
+  allTasks?: Record<string, unknown>[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -74,6 +78,16 @@ function RecordListItem({
   const titlePair = entries.find(([k]) => k === "title" || k === "name");
   const summary = entries.filter(([k]) => k !== (titlePair ? titlePair[0] : null));
   const title = titlePair ? titlePair[1] : item.id ? String(item.id) : `Item ${index + 1}`;
+
+  let countSuffix = "";
+  if (table === "subjects") {
+    let childCount = 0;
+    if (allIssues) childCount += allIssues.filter((i) => i.subject_id === item.id).length;
+    if (allTasks) childCount += allTasks.filter((t) => t.subject_id === item.id).length;
+    if (childCount > 0) {
+      countSuffix = ` (${childCount})`;
+    }
+  }
 
   const isSelectedSubject = table === "subjects" && activeSubjectId === item.id;
   const isRelatedChild = (table === "issues" || table === "tasks") && item.subject_id === activeSubjectId;
@@ -116,7 +130,10 @@ function RecordListItem({
           {expanded ? "▼" : "▶"}
         </span>
         <div style={{ flexGrow: 1 }}>
-          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{String(title)}</div>
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+            {String(title)}
+            {countSuffix && <span style={{ marginLeft: 4, color: "var(--muted)", fontSize: 11, fontWeight: 400 }}>{countSuffix}</span>}
+          </div>
           {errorMsg && <div style={{ fontSize: 11, color: "rgba(180, 60, 40, 0.85)", marginTop: 2 }}>{errorMsg}</div>}
         </div>
         {Boolean(item.status) && (
@@ -260,6 +277,8 @@ function RenderRecordList({
   onRefresh,
   activeSubjectId,
   onSubjectClick,
+  allIssues,
+  allTasks,
 }: {
   items: Record<string, unknown>[];
   table: string;
@@ -267,6 +286,8 @@ function RenderRecordList({
   onRefresh: () => void;
   activeSubjectId?: string | null;
   onSubjectClick?: (id: string, isOpen: boolean) => void;
+  allIssues?: Record<string, unknown>[];
+  allTasks?: Record<string, unknown>[];
 }) {
   if (items.length === 0) {
     return <div style={{ color: "var(--muted)", fontSize: 13, paddingLeft: 8 }}>None</div>;
@@ -283,6 +304,8 @@ function RenderRecordList({
           onRefresh={onRefresh}
           activeSubjectId={activeSubjectId}
           onSubjectClick={onSubjectClick}
+          allIssues={allIssues}
+          allTasks={allTasks}
         />
       ))}
     </div>
@@ -735,6 +758,8 @@ export function GoalEditor({
                   setActiveSubjectId((prev) => (prev === id ? null : prev));
                 }
               }}
+              allIssues={detail.issues}
+              allTasks={detail.tasks}
             />
           </div>
         ))}
