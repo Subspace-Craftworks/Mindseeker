@@ -311,8 +311,7 @@ function MarkdownMessage({ content }: { content: string }) {
       }}
     >
       {displayContent}
-      </ReactMarkdown>
-    </>
+    </ReactMarkdown>
   );
 }
 
