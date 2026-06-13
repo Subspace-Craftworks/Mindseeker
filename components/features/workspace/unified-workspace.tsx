@@ -211,6 +211,18 @@ async function readChatStream(
 }
 
 function MarkdownMessage({ content }: { content: string }) {
+  // Strip orchestration JSON payload so it doesn't clutter the UI
+  let displayContent = content.replace(/```json\s*\{[\s\S]*?(?:```|$)/gi, (match) => {
+    if (match.includes('"current_goal_id"') || match.includes('"operations"')) return "";
+    return match;
+  });
+  // Also strip raw JSON if Dify forgot the markdown wrappers (even during streaming)
+  const rawJsonMatch = displayContent.match(/\{\s*"current_goal_id"[\s\S]*$/);
+  if (rawJsonMatch) {
+    displayContent = displayContent.substring(0, rawJsonMatch.index);
+  }
+  displayContent = displayContent.trim();
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -298,8 +310,9 @@ function MarkdownMessage({ content }: { content: string }) {
         ),
       }}
     >
-      {content}
-    </ReactMarkdown>
+      {displayContent}
+      </ReactMarkdown>
+    </>
   );
 }
 
