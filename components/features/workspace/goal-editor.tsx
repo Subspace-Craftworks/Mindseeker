@@ -54,12 +54,16 @@ function RecordListItem({
   table,
   sessionToken,
   onRefresh,
+  activeSubjectId,
+  onSubjectClick,
 }: {
   item: Record<string, unknown>;
   index: number;
   table: string;
   sessionToken: string;
   onRefresh: () => void;
+  activeSubjectId?: string | null;
+  onSubjectClick?: (id: string, isOpen: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -71,11 +75,30 @@ function RecordListItem({
   const summary = entries.filter(([k]) => k !== (titlePair ? titlePair[0] : null));
   const title = titlePair ? titlePair[1] : item.id ? String(item.id) : `Item ${index + 1}`;
 
+  const isSelectedSubject = table === "subjects" && activeSubjectId === item.id;
+  const isRelatedChild = (table === "issues" || table === "tasks") && item.subject_id === activeSubjectId;
+  const isDimmed = activeSubjectId != null && !isSelectedSubject && !isRelatedChild;
+
   return (
-    <div style={{ padding: "0 4px", opacity: deleting ? 0.3 : 1, pointerEvents: deleting ? "none" : "auto", transition: "opacity 0.2s" }}>
+    <div style={{
+      padding: "0 4px",
+      opacity: deleting || isDimmed ? 0.3 : 1,
+      pointerEvents: deleting ? "none" : "auto",
+      transition: "all 0.2s ease-in-out",
+      background: isSelectedSubject ? "rgba(42, 133, 255, 0.04)" : isRelatedChild ? "rgba(42, 133, 255, 0.02)" : "transparent",
+      borderLeft: isSelectedSubject ? "2px solid var(--accent)" : isRelatedChild ? "2px solid rgba(42, 133, 255, 0.3)" : "2px solid transparent",
+      borderRadius: 2,
+      marginLeft: isSelectedSubject || isRelatedChild ? -2 : 0,
+    }}>
       <button
         type="button"
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          const nextExpanded = !expanded;
+          setExpanded(nextExpanded);
+          if (table === "subjects" && onSubjectClick) {
+            onSubjectClick(String(item.id), nextExpanded);
+          }
+        }}
         style={{
           width: "100%",
           display: "flex",
@@ -235,11 +258,15 @@ function RenderRecordList({
   table,
   sessionToken,
   onRefresh,
+  activeSubjectId,
+  onSubjectClick,
 }: {
   items: Record<string, unknown>[];
   table: string;
   sessionToken: string;
   onRefresh: () => void;
+  activeSubjectId?: string | null;
+  onSubjectClick?: (id: string, isOpen: boolean) => void;
 }) {
   if (items.length === 0) {
     return <div style={{ color: "var(--muted)", fontSize: 13, paddingLeft: 8 }}>None</div>;
@@ -254,6 +281,8 @@ function RenderRecordList({
           table={table}
           sessionToken={sessionToken}
           onRefresh={onRefresh}
+          activeSubjectId={activeSubjectId}
+          onSubjectClick={onSubjectClick}
         />
       ))}
     </div>
@@ -379,6 +408,8 @@ export function GoalEditor({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
 
   // Artifact modal state
   const [openArtifactId, setOpenArtifactId] = useState<string | null>(null);
@@ -695,6 +726,14 @@ export function GoalEditor({
                 // To trigger a re-fetch, we can just call onSaved with current goal
                 // which will cause parent to refreshContextMap and reload goal details
                 onSaved(detail.goal);
+              }}
+              activeSubjectId={activeSubjectId}
+              onSubjectClick={(id, isOpen) => {
+                if (isOpen) {
+                  setActiveSubjectId(id);
+                } else {
+                  setActiveSubjectId((prev) => (prev === id ? null : prev));
+                }
               }}
             />
           </div>
