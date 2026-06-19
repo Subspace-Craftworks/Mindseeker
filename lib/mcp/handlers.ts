@@ -930,9 +930,10 @@ export async function getGoalContextText(goalId: string, userId: string): Promis
     if (error) throw error;
     if (!payload || !payload.goal) return "";
 
-    let text = `Title: ${payload.goal.title}\n`;
-    if (payload.goal.description) text += `Description: ${payload.goal.description}\n`;
-    text += `Status: ${payload.goal.status}\n\n`;
+    let text = `[Goal]\n`;
+    text += `title: ${payload.goal.title}\n`;
+    if (payload.goal.description) text += `description: ${payload.goal.description}\n`;
+    text += `status: ${payload.goal.status}\n\n`;
 
     if (payload.subjects && payload.subjects.length > 0) {
       text += `[Subjects]\n`;
