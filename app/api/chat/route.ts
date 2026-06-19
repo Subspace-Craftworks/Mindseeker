@@ -172,14 +172,8 @@ export async function POST(req: NextRequest) {
         if (session) {
           resolvedSessionId = session.id;
 
-          // If goal_id override was provided (user switched goal in UI), update the session
-          if (requestGoalId && requestGoalId !== session.current_goal_id) {
-            const { updateSessionGoal } = await import("@/lib/db/sessions");
-            await updateSessionGoal(session.id, requestGoalId);
-            currentGoalIdStr = requestGoalId;
-            const { getGoalContextText } = await import("@/lib/mcp/handlers");
-            currentGoalContextStr = await getGoalContextText(requestGoalId, user.id);
-          } else if (session.current_goal_id) {
+          // For existing sessions, always use session's current_goal_id (session is authoritative)
+          if (session.current_goal_id) {
             currentGoalIdStr = session.current_goal_id;
             const { getGoalContextText } = await import("@/lib/mcp/handlers");
             currentGoalContextStr = await getGoalContextText(currentGoalIdStr, user.id);

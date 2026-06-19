@@ -845,14 +845,6 @@ export function UnifiedWorkspace() {
       return;
     }
 
-    // Sync selectedGoalId to session's current_goal_id before sending
-    if (activeThread?.current_goal_id && activeThread.current_goal_id !== selectedGoalId) {
-      const goalExists = contextMap?.goals.some(g => g.id === activeThread.current_goal_id);
-      if (goalExists) {
-        setSelectedGoalId(activeThread.current_goal_id);
-      }
-    }
-
     const threadKey = activeThread?.id ?? "draft";
     const assistantId = `assistant-${Date.now()}`;
     const createdAt = new Date().toISOString();
@@ -887,7 +879,7 @@ export function UnifiedWorkspace() {
         body: JSON.stringify({
           message,
           conversation_id: activeThread?.dify_conversation_id ?? "",
-          goal_id: selectedGoalId ?? undefined,
+          goal_id: !activeThread ? (selectedGoalId ?? undefined) : undefined,
         }),
       });
       const contentType = response.headers.get("content-type") ?? "";
