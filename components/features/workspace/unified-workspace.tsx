@@ -417,7 +417,7 @@ export function UnifiedWorkspace() {
     [contextMap, showInactive],
   );
 
-  // Sync selected goal when switching threads
+  // Sync selected goal when switching threads or when thread data updates
   useEffect(() => {
     if (!activeThread) return;
     const threadGoalId = activeThread.current_goal_id;
@@ -428,7 +428,7 @@ export function UnifiedWorkspace() {
         setSelectedGoalId(threadGoalId);
       }
     }
-  }, [activeThreadId]);
+  }, [activeThreadId, activeThread?.current_goal_id]);
 
   useEffect(() => {
     let active = true;
@@ -845,6 +845,14 @@ export function UnifiedWorkspace() {
       return;
     }
 
+    // Sync selectedGoalId to session's current_goal_id before sending
+    if (activeThread?.current_goal_id && activeThread.current_goal_id !== selectedGoalId) {
+      const goalExists = contextMap?.goals.some(g => g.id === activeThread.current_goal_id);
+      if (goalExists) {
+        setSelectedGoalId(activeThread.current_goal_id);
+      }
+    }
+
     const threadKey = activeThread?.id ?? "draft";
     const assistantId = `assistant-${Date.now()}`;
     const createdAt = new Date().toISOString();
@@ -879,12 +887,7 @@ export function UnifiedWorkspace() {
         body: JSON.stringify({
           message,
           conversation_id: activeThread?.dify_conversation_id ?? "",
-          goal_id: (() => {
-            // Send goal_id if: new thread with selected goal, OR active thread's goal differs from selected
-            if (!activeThread && selectedGoalId) return selectedGoalId;
-            if (activeThread && selectedGoalId && selectedGoalId !== activeThread.current_goal_id) return selectedGoalId;
-            return undefined;
-          })(),
+          goal_id: selectedGoalId ?? undefined,
         }),
       });
       const contentType = response.headers.get("content-type") ?? "";
