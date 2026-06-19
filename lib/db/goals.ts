@@ -136,53 +136,22 @@ export async function deleteGoal(input: { userId: string; goalId: string }) {
 
 export async function getGoalDetail(input: { userId: string; goalId: string }) {
   const supabase = createSupabaseServiceClient();
-  const { data: goal, error: goalError } = await supabase
-    .from("goals")
-    .select("*")
-    .eq("id", input.goalId)
-    .eq("user_id", input.userId)
-    .maybeSingle();
 
-  if (goalError) {
-    throw goalError;
-  }
-  if (!goal) {
-    return null;
-  }
-
-  const [{ data: subjects, error: subjectsError }, { data: issues, error: issuesError }, { data: tasks, error: tasksError }, { data: events, error: eventsError }, { data: artifacts, error: artifactsError }] = await Promise.all([
-    supabase.from("subjects").select("*").eq("goal_id", input.goalId).eq("user_id", input.userId).order("updated_at", { ascending: false }),
-    supabase.from("issues").select("*").eq("user_id", input.userId).order("updated_at", { ascending: false }),
-    supabase.from("tasks").select("*").eq("user_id", input.userId).order("updated_at", { ascending: false }),
-    supabase.from("events").select("*").eq("goal_id", input.goalId).eq("user_id", input.userId).order("occurred_at", { ascending: false }),
-    supabase.from("artifacts").select("*").eq("goal_id", input.goalId).eq("user_id", input.userId).order("created_at", { ascending: false }),
-  ]);
-
-  if (subjectsError) throw subjectsError;
-  if (issuesError) throw issuesError;
-  if (tasksError) throw tasksError;
-  if (eventsError) throw eventsError;
-  if (artifactsError) throw artifactsError;
-
-  const subjectIds = new Set((subjects ?? []).map((row) => String((row as { id?: unknown }).id ?? "")).filter(Boolean));
-  const issuesFiltered = (issues ?? []).filter((row) => {
-    const subjectId = String((row as { subject_id?: unknown }).subject_id ?? "");
-    return subjectIds.has(subjectId);
+  const { data, error } = await supabase.rpc('get_goal_detail', {
+    p_goal_id: input.goalId,
+    p_user_id: input.userId,
   });
-  const issueIds = new Set(issuesFiltered.map((row) => String((row as { id?: unknown }).id ?? "")).filter(Boolean));
-  const tasksFiltered = (tasks ?? []).filter((row) => {
-    const subjectId = String((row as { subject_id?: unknown }).subject_id ?? "");
-    const issueId = String((row as { issue_id?: unknown }).issue_id ?? "");
-    return subjectIds.has(subjectId) || issueIds.has(issueId);
-  });
+
+  if (error) throw error;
+  if (!data || !data.goal) return null;
 
   return {
-    goal: goal as GoalRecord,
-    subjects: subjects ?? [],
-    issues: issuesFiltered,
-    tasks: tasksFiltered,
-    events: events ?? [],
-    artifacts: artifacts ?? [],
+    goal: data.goal as GoalRecord,
+    subjects: data.subjects ?? [],
+    issues: data.issues ?? [],
+    tasks: data.tasks ?? [],
+    events: data.events ?? [],
+    artifacts: data.artifacts ?? [],
   } as GoalDetail;
 }
 
