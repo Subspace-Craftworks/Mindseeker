@@ -845,6 +845,14 @@ export function UnifiedWorkspace() {
       return;
     }
 
+    // Sync selectedGoalId to session's current_goal_id (session is authoritative)
+    if (activeThread?.current_goal_id && activeThread.current_goal_id !== selectedGoalId) {
+      const goalExists = contextMap?.goals.some(g => g.id === activeThread.current_goal_id);
+      if (goalExists) {
+        setSelectedGoalId(activeThread.current_goal_id);
+      }
+    }
+
     const threadKey = activeThread?.id ?? "draft";
     const assistantId = `assistant-${Date.now()}`;
     const createdAt = new Date().toISOString();
