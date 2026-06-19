@@ -417,6 +417,19 @@ export function UnifiedWorkspace() {
     [contextMap, showInactive],
   );
 
+  // Sync selected goal when switching threads
+  useEffect(() => {
+    if (!activeThread) return;
+    const threadGoalId = activeThread.current_goal_id;
+    if (threadGoalId) {
+      // Only sync if the goal still exists in the context map
+      const goalExists = contextMap?.goals.some(g => g.id === threadGoalId);
+      if (goalExists) {
+        setSelectedGoalId(threadGoalId);
+      }
+    }
+  }, [activeThreadId]);
+
   useEffect(() => {
     let active = true;
 
@@ -866,7 +879,12 @@ export function UnifiedWorkspace() {
         body: JSON.stringify({
           message,
           conversation_id: activeThread?.dify_conversation_id ?? "",
-          goal_id: !activeThread && selectedGoalId ? selectedGoalId : undefined,
+          goal_id: (() => {
+            // Send goal_id if: new thread with selected goal, OR active thread's goal differs from selected
+            if (!activeThread && selectedGoalId) return selectedGoalId;
+            if (activeThread && selectedGoalId && selectedGoalId !== activeThread.current_goal_id) return selectedGoalId;
+            return undefined;
+          })(),
         }),
       });
       const contentType = response.headers.get("content-type") ?? "";

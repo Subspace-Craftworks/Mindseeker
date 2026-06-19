@@ -85,3 +85,15 @@ export async function deleteSessionByConversation(conversationId: string, userId
 
   if (error) throw error;
 }
+
+
+export async function listSessionsByUser(userId: string): Promise<SessionRecord[]> {
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  return (data ?? []) as SessionRecord[];
+}
