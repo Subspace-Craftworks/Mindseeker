@@ -922,11 +922,17 @@ export async function executeTool(name: string, args: JsonObject, userId: string
 export async function getGoalContextText(goalId: string, userId: string): Promise<string> {
   const supabase = getSupabaseClient();
   try {
-    const payload = await summarizeContext(supabase, { goal_id: goalId, user_id: userId });
-    
-    let text = `Title: ${payload.goal?.title}\n`;
-    if (payload.goal?.description) text += `Description: ${payload.goal.description}\n`;
-    text += `Status: ${payload.goal?.status}\n\n`;
+    const { data: payload, error } = await supabase.rpc('get_goal_context', {
+      p_goal_id: goalId,
+      p_user_id: userId,
+    });
+
+    if (error) throw error;
+    if (!payload || !payload.goal) return "";
+
+    let text = `Title: ${payload.goal.title}\n`;
+    if (payload.goal.description) text += `Description: ${payload.goal.description}\n`;
+    text += `Status: ${payload.goal.status}\n\n`;
 
     if (payload.subjects && payload.subjects.length > 0) {
       text += `[Subjects]\n`;
