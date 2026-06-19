@@ -972,8 +972,10 @@ export function UnifiedWorkspace() {
         });
 
         const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
-        await refreshContextMap(nextThreadId ?? activeThreadId);
-        await refreshGoalDetail();
+        await Promise.all([
+          refreshContextMap(nextThreadId ?? activeThreadId),
+          refreshGoalDetail(),
+        ]);
         if (threadKey === "draft" && nextThreadId) {
           setMessagesByThread((current) => {
             const draftMessages = current.draft ?? [];
@@ -1006,7 +1008,10 @@ export function UnifiedWorkspace() {
       }
 
       const nextThreadId = await refreshThreads(conversationId || activeThread?.dify_conversation_id || undefined);
-      await refreshContextMap(nextThreadId ?? activeThreadId);
+      await Promise.all([
+        refreshContextMap(nextThreadId ?? activeThreadId),
+        refreshGoalDetail(),
+      ]);
       if (threadKey === "draft" && nextThreadId) {
         setMessagesByThread((current) => {
           const draftMessages = current.draft ?? [];
