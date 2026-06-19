@@ -880,6 +880,11 @@ const TOOL_HANDLERS = new Map<string, (supabase: SupabaseClient, params: JsonObj
   ["delete_artifact", deleteArtifact],
 ]);
 
+// Tools that should set sessions.current_goal_id to the result goal ID
+const SESSION_GOAL_FOCUS_TOOLS = new Set(["create_goal", "update_goal", "get_goal"]);
+// Tools that should clear sessions.current_goal_id
+const SESSION_GOAL_CLEAR_TOOLS = new Set(["complete_goal"]);
+
 export async function executeTool(name: string, args: JsonObject, userId: string): Promise<any> {
   const handler = TOOL_HANDLERS.get(name);
   if (!handler) {
@@ -887,9 +892,31 @@ export async function executeTool(name: string, args: JsonObject, userId: string
   }
   
   const supabase = getSupabaseClient();
+  // Extract session_id from args (not passed to handler)
+  const { session_id, ...restArgs } = args as { session_id?: string } & JsonObject;
   // Inject userId into params
-  const params = { ...args, user_id: userId };
-  return handler(supabase, params);
+  const params = { ...restArgs, user_id: userId };
+  const result = await handler(supabase, params);
+
+  // Auto-update sessions.current_goal_id when session_id is provided
+  if (session_id && typeof session_id === "string") {
+    try {
+      const { updateSessionGoal } = await import("@/lib/db/sessions");
+      if (SESSION_GOAL_FOCUS_TOOLS.has(name)) {
+        const goalId = result?.id ?? result?.goal?.id;
+        if (goalId) {
+          await updateSessionGoal(session_id, goalId);
+        }
+      } else if (SESSION_GOAL_CLEAR_TOOLS.has(name)) {
+        await updateSessionGoal(session_id, null);
+      }
+    } catch (err) {
+      console.error("Failed to update session goal:", err);
+      // Session update failure should not break tool execution
+    }
+  }
+
+  return result;
 }
 
 export async function getGoalContextText(goalId: string, userId: string): Promise<string> {

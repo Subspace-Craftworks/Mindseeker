@@ -3,6 +3,7 @@ import { jwtVerify } from "jose";
 import { MCP_TOOLS } from "@/lib/mcp/tools";
 import { executeTool } from "@/lib/mcp/handlers";
 import { MCP_PROFILES } from "@/lib/mcp/profiles";
+import { recordAppLog } from "@/lib/db/app-logs";
 
 type JsonObject = Record<string, unknown>;
 type JsonRpcRequest = {
@@ -144,6 +145,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
           timestamp: new Date().toISOString(),
         }));
       }
+
+      // Log tool call arguments for debugging
+      void recordAppLog({
+        level: "info",
+        source: "mcp",
+        component: "app/api/mcp/[profile]/route",
+        operation: "tools/call",
+        route: `/api/mcp/${profile}`,
+        message: `Tool called: ${name}`,
+        details: { tool: name, arguments: args, has_session_id: !!args.session_id },
+        userId,
+      });
 
       try {
         const payload = await executeTool(name, args, userId);

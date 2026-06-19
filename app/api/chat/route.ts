@@ -7,6 +7,7 @@ import { upsertChatThread } from "@/lib/db/chat-threads";
 import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/utils/env";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { executeOperations } from "@/lib/orchestrator";
+import { createSession, getSession, updateSessionConversation } from "@/lib/db/sessions";
 
 type StreamEvent =
   | {
@@ -25,6 +26,7 @@ type StreamEvent =
       type: "done";
       conversationId?: string;
       answer: string;
+      sessionId?: string;
     }
   | {
       type: "error";
@@ -151,6 +153,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const conversationId = typeof body.conversation_id === "string" ? body.conversation_id.trim() : "";
+    const requestSessionId = typeof body.session_id === "string" ? body.session_id.trim() : "";
 
     if (!message) {
       return NextResponse.json(
@@ -159,28 +162,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Fetch current_goal_id and context from DB if conversation exists
+    // 1. Resolve session and build context
+    let resolvedSessionId = requestSessionId;
     let currentGoalIdStr = "";
     let currentGoalContextStr = "";
-    if (conversationId) {
-      try {
-        const supabase = createSupabaseServiceClient();
-        const { data: thread } = await supabase
-          .from("chat_threads")
-          .select("current_goal_id")
-          .eq("dify_conversation_id", conversationId)
-          .eq("user_id", user.id)
-          .maybeSingle();
 
-        if (thread?.current_goal_id) {
-          currentGoalIdStr = thread.current_goal_id;
-          
-          // Use the helper to fetch context text
+    if (requestSessionId) {
+      // Existing session: load context from sessions table
+      try {
+        const session = await getSession(requestSessionId, user.id);
+        if (session?.current_goal_id) {
+          currentGoalIdStr = session.current_goal_id;
           const { getGoalContextText } = await import("@/lib/mcp/handlers");
           currentGoalContextStr = await getGoalContextText(currentGoalIdStr, user.id);
         }
       } catch (err) {
-        console.error("Failed to fetch current_goal_id/context:", err);
+        console.error("Failed to resolve session:", err);
+      }
+    } else {
+      // New session: create one
+      try {
+        const newSession = await createSession(user.id);
+        resolvedSessionId = newSession.id;
+      } catch (err) {
+        console.error("Failed to create session:", err);
+        resolvedSessionId = crypto.randomUUID();
+      }
+
+      // Fallback: also check chat_threads for context (backward compat during migration)
+      if (conversationId) {
+        try {
+          const supabase = createSupabaseServiceClient();
+          const { data: thread } = await supabase
+            .from("chat_threads")
+            .select("current_goal_id")
+            .eq("dify_conversation_id", conversationId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (thread?.current_goal_id) {
+            currentGoalIdStr = thread.current_goal_id;
+            const { getGoalContextText } = await import("@/lib/mcp/handlers");
+            currentGoalContextStr = await getGoalContextText(currentGoalIdStr, user.id);
+          }
+        } catch (err) {
+          console.error("Failed to fetch current_goal_id/context from chat_threads:", err);
+        }
       }
     }
 
@@ -192,8 +219,9 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         inputs: {
+          session_id: resolvedSessionId,
           current_goal_id: currentGoalIdStr,
-          current_goal_context: currentGoalContextStr
+          current_goal_context: currentGoalContextStr,
         },
         query: message,
         response_mode: "streaming",
@@ -285,14 +313,25 @@ export async function POST(req: NextRequest) {
           if (upstreamConversationId) {
             let finalCurrentGoalId = currentGoalIdStr || undefined;
 
-            // Execute JSON orchestration if any
-            try {
-              const result = await executeOperations(answer, user.id, currentGoalIdStr || undefined);
-              if (result.resolvedCurrentGoalId) {
-                finalCurrentGoalId = result.resolvedCurrentGoalId;
+            // Execute JSON orchestration only if no session_id (legacy fallback)
+            if (!requestSessionId) {
+              try {
+                const result = await executeOperations(answer, user.id, currentGoalIdStr || undefined);
+                if (result.resolvedCurrentGoalId) {
+                  finalCurrentGoalId = result.resolvedCurrentGoalId;
+                }
+              } catch (err) {
+                console.error("Orchestration failed:", err);
               }
-            } catch (err) {
-              console.error("Orchestration failed:", err);
+            }
+
+            // Update session with dify_conversation_id
+            if (resolvedSessionId) {
+              try {
+                await updateSessionConversation(resolvedSessionId, upstreamConversationId);
+              } catch (err) {
+                console.error("Failed to update session conversation:", err);
+              }
             }
 
             await upsertChatThread({
@@ -310,6 +349,7 @@ export async function POST(req: NextRequest) {
                 type: "done",
                 conversationId: upstreamConversationId || undefined,
                 answer: answer.trim(),
+                sessionId: resolvedSessionId || undefined,
               }),
             ),
           );

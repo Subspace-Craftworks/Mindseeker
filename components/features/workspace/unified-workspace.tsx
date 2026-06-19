@@ -108,6 +108,7 @@ type ChatStreamEvent =
       type: "done";
       conversationId?: string;
       answer: string;
+      sessionId?: string;
     }
   | {
       type: "error";
@@ -404,6 +405,9 @@ export function UnifiedWorkspace() {
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [selectedGoalDetail, setSelectedGoalDetail] = useState<GoalDetail | null>(null);
   const [loadingGoalDetail, setLoadingGoalDetail] = useState(false);
+
+  // Session tracking for Dify MCP context
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -866,6 +870,7 @@ export function UnifiedWorkspace() {
         body: JSON.stringify({
           message,
           conversation_id: activeThread?.dify_conversation_id ?? "",
+          session_id: chatSessionId ?? undefined,
         }),
       });
       const contentType = response.headers.get("content-type") ?? "";
@@ -933,6 +938,9 @@ export function UnifiedWorkspace() {
           if (event.type === "done") {
             if (event.conversationId) {
               conversationId = event.conversationId;
+            }
+            if (event.sessionId) {
+              setChatSessionId(event.sessionId);
             }
             assistantContent = event.answer || assistantContent;
             setMessagesByThread((current) => {
@@ -1041,6 +1049,7 @@ export function UnifiedWorkspace() {
 
   function startNewThread() {
     setActiveThreadId(null);
+    setChatSessionId(null);
     setError(null);
     seedOpeningStatement();
     void refreshContextMap(null).catch(() => undefined);

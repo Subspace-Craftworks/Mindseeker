@@ -1,4 +1,9 @@
-export const MCP_TOOLS = [
+// session_id is injected into all tool schemas below via SESSION_ID_PROPERTY
+const SESSION_ID_PROPERTY = {
+  session_id: { type: "string", description: "Optional session ID for automatic context tracking. When provided, the session's current_goal_id is updated based on tool execution." }
+} as const;
+
+const RAW_TOOLS = [
   {
     name: "list_goals",
     description: "List goals for the user. Ordered by updated_at descending.",
@@ -419,3 +424,15 @@ export const MCP_TOOLS = [
     }
   }
 ];
+
+// Inject session_id into all tool schemas
+export const MCP_TOOLS = RAW_TOOLS.map(tool => ({
+  ...tool,
+  inputSchema: {
+    ...tool.inputSchema,
+    properties: {
+      ...tool.inputSchema.properties,
+      ...SESSION_ID_PROPERTY,
+    }
+  }
+}));
