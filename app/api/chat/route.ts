@@ -150,6 +150,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const conversationId = typeof body.conversation_id === "string" ? body.conversation_id.trim() : "";
+    const requestGoalId = typeof body.goal_id === "string" ? body.goal_id.trim() : "";
 
     if (!message) {
       return NextResponse.json(
@@ -186,6 +187,16 @@ export async function POST(req: NextRequest) {
       try {
         const newSession = await createSession(user.id);
         resolvedSessionId = newSession.id;
+
+        // If goal_id was provided (e.g. user selected a goal before starting new chat),
+        // set it as the session's current_goal_id and build context
+        if (requestGoalId) {
+          const { updateSessionGoal } = await import("@/lib/db/sessions");
+          await updateSessionGoal(resolvedSessionId, requestGoalId);
+          currentGoalIdStr = requestGoalId;
+          const { getGoalContextText } = await import("@/lib/mcp/handlers");
+          currentGoalContextStr = await getGoalContextText(requestGoalId, user.id);
+        }
       } catch (err) {
         console.error("Failed to create session:", err);
         resolvedSessionId = crypto.randomUUID();

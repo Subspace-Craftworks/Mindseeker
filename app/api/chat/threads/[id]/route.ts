@@ -3,6 +3,7 @@ import { recordAppError } from "@/lib/db/app-logs";
 import { requireSupabaseUser } from "@/lib/auth";
 import { deleteChatThread, getChatThread } from "@/lib/db/chat-threads";
 import { deleteConversation, listConversationMessages } from "@/lib/api/dify";
+import { deleteSessionByConversation } from "@/lib/db/sessions";
 
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const routeName = "/api/chat/threads/[id]";
@@ -22,6 +23,16 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
       }
     }
     await deleteChatThread(user.id, id);
+
+    // Also delete the associated session
+    if (thread) {
+      try {
+        await deleteSessionByConversation(thread.dify_conversation_id, user.id);
+      } catch (err) {
+        console.warn("Failed to delete associated session:", err);
+      }
+    }
+
     return NextResponse.json({ ok: true, data: { deleted: id }, error: null });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unauthorized";

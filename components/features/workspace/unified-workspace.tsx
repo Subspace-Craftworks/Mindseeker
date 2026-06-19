@@ -866,6 +866,7 @@ export function UnifiedWorkspace() {
         body: JSON.stringify({
           message,
           conversation_id: activeThread?.dify_conversation_id ?? "",
+          goal_id: !activeThread && selectedGoalId ? selectedGoalId : undefined,
         }),
       });
       const contentType = response.headers.get("content-type") ?? "";
