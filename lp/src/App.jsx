@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowRight, Github, Network, Sparkles, Archive, GitBranch, ShieldCheck, Check, X } from 'lucide-react';
+import { ArrowRight, Github as GitHub, Network, Sparkles, Archive, GitBranch, ShieldCheck, Check, X } from 'lucide-react';
 import './style.css';
 
 const features = [
@@ -45,7 +45,7 @@ function App() {
       <p className="eyebrow"><Sparkles size={16}/> Open-source AI thinking workspace</p>
       <h1>Mindseeker</h1>
       <p className="lead">ゴールを中心に、AIと共に考え、行動し、成長するためのワークスペース。</p>
-      <div className="actions"><a className="primary" href="#beta">β版を試す <ArrowRight size={18}/></a><a className="secondary" href="#github"><Github size={18}/> GitHubを見る</a></div>
+      <div className="actions"><a className="primary" href="#beta">β版を試す <ArrowRight size={18}/></a><a className="secondary" href="#github"><GitHub size={18}/> GitHubを見る</a></div>
     </section>
     <section className="grid">{features.map(({icon:Icon,title,text}) => <article className="card" key={title}><Icon/><h3>{title}</h3><p>{text}</p></article>)}</section>
     <section className="philosophy"><div><p className="eyebrow">Philosophy</p><h2>More than a task manager</h2></div><p>Mindseekerは単なるToDo管理ではありません。目標と現実の差分を見つめ、AIとの継続的な対話を通して、思考そのものを更新していくための環境です。</p></section>
