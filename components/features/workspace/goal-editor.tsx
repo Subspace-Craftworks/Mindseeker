@@ -217,6 +217,7 @@ function RecordListItem({
                 Delete
               </button>
 
+              {table !== "events" && (
               <div style={{ display: "flex", gap: 4 }}>
                 {(["active", "inactive"] as const).map((s) => {
                   const isActive = item.is_active !== false;
@@ -262,6 +263,7 @@ function RecordListItem({
                   );
                 })}
               </div>
+              )}
             </div>
           )}
         </div>
