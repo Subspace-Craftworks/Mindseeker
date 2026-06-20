@@ -142,9 +142,9 @@ function RecordListItem({
               fontSize: 10,
               padding: "2px 6px",
               borderRadius: "var(--radius-sm)",
-              background: item.status === "inactive" ? "transparent" : "var(--accent)",
-              color: item.status === "inactive" ? "var(--muted)" : "white",
-              border: item.status === "inactive" ? "1px solid var(--line)" : "none",
+              background: item.is_active === false ? "transparent" : "var(--accent)",
+              color: item.is_active === false ? "var(--muted)" : "white",
+              border: item.is_active === false ? "1px solid var(--line)" : "none",
             }}
           >
             {String(item.status)}
@@ -219,8 +219,8 @@ function RecordListItem({
 
               <div style={{ display: "flex", gap: 4 }}>
                 {(["active", "inactive"] as const).map((s) => {
-                  const currentStatus = (item.status as string) || "active";
-                  const isSelected = currentStatus === s;
+                  const isActive = item.is_active !== false;
+                  const isSelected = s === "active" ? isActive : !isActive;
                   return (
                     <button
                       key={s}
@@ -236,7 +236,7 @@ function RecordListItem({
                               "Content-Type": "application/json",
                               Authorization: `Bearer ${sessionToken}`,
                             },
-                            body: JSON.stringify({ status: s }),
+                            body: JSON.stringify({ is_active: s === "active" }),
                           });
                           if (!res.ok) throw new Error("Update failed");
                           onRefresh();
@@ -735,9 +735,20 @@ export function GoalEditor({
           const hideAddButton = table === "events";
 
           const INACTIVE_STATUSES = ["inactive", "done", "completed", "resolved", "closed", "cancelled"];
+          const inactiveSubjectIds = new Set(
+            (detail.subjects as Record<string, unknown>[])
+              .filter((s) => s.is_active === false)
+              .map((s) => String(s.id))
+          );
           const filteredItems = showInactiveRelated
             ? items
-            : items.filter((item) => !INACTIVE_STATUSES.includes(String((item as Record<string, unknown>).status ?? "")));
+            : (items as Record<string, unknown>[]).filter((item) => {
+                // Hide items that are themselves inactive
+                if (item.is_active === false) return false;
+                // Hide children of inactive subjects (issues/tasks)
+                if ((table === "issues" || table === "tasks") && inactiveSubjectIds.has(String(item.subject_id ?? ""))) return false;
+                return true;
+              });
 
           return (
           <div key={label}>

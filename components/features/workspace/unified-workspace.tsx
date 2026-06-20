@@ -452,8 +452,22 @@ export function UnifiedWorkspace() {
 
     void loadSession();
 
+    // Listen for auth state changes (token refresh, sign out)
+    const supabase = createBrowserSupabaseClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      if (event === "SIGNED_OUT" || !session) {
+        router.replace("/login");
+        return;
+      }
+      if (session.access_token) {
+        setSessionToken(session.access_token);
+      }
+    });
+
     return () => {
       active = false;
+      subscription.unsubscribe();
     };
   }, [router]);
 
