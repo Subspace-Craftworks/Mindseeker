@@ -1,38 +1,43 @@
 # Documentation Policy
 
-Updated: 2026-06-10
+Updated: 2026-06-20
 
-## Purpose
+## 目的
 
-This folder keeps the current, implementation-backed specification for Mindseeker.
-The goal is to make the present behavior easy to find and to separate it from old plans, drafts, and migration notes.
+このフォルダは Mindseeker の現行仕様と設計を記述するドキュメントを管理します。
+「今の動作」を素早く把握できることを重視し、過去の計画や廃止済みの仕様とは明確に分離します。
 
-## Rules
+## ルール
 
-- Keep only the behavior that is implemented or verified in the current codebase here.
-- Put exploratory notes, phase plans, concept drafts, and obsolete migration notes in `docs/archive/`.
-- Keep one file for remaining work so open items do not get scattered again.
-- Prefer feature-based documentation over history-based documentation.
+- 現在のコードベースに実装されている動作のみを `docs/` 直下に置く
+- 完了した移行計画、旧設計メモ、廃止済みの仕様は `docs/archive/` に移動する
+- 未解決の課題は `open-issues.md` に集約し、解決したら削除する
+- 履歴ベースではなく、機能ベースのドキュメント構成にする
+- 言語は日本語を基本とする（公開用に英語版を別途作成する場合がある）
 
-## Current Document Set
+## 現在のドキュメント一覧
 
-- `docs/current-spec.md`: current implementation spec for auth, chat, goals, and the BFF
-- `docs/fe-bff-dify-flow.md`: Japanese overview of the FE -> BFF -> Dify request flow
-- `docs/open-issues.md`: only the remaining work and known gaps
-- `docs/archive/`: older plans and notes that are no longer the source of truth
+| ファイル | 内容 |
+|---------|------|
+| `system-architecture.md` | システム全体構成、コンポーネント設計、データフロー、DB設計 |
+| `session-based-context-injection.md` | Session 方式によるコンテキスト管理と MCP 直接実行の詳細仕様 |
+| `authentication.md` | 認証・認可の仕様（Supabase Auth + 独自 OAuth/JWT） |
+| `user-tiers-and-rate-limits.md` | ユーザー Tier（free/paid/contributor）と利用制限 |
+| `open-issues.md` | 未解決の課題・改善候補 |
+| `00_documentation_policy.md` | 本ファイル。ドキュメント管理方針 |
 
-## What Belongs Here
+## docs/ 直下に置くもの
 
-- Authentication flow and session behavior
-- App shell behavior
-- Chat workspace behavior
-- Goals workspace behavior
-- BFF API contracts that are already implemented
-- Supabase tables, migrations, and operational notes that are still current
+- 認証フローとセッション管理
+- チャット・ゴール・Viewer の動作仕様
+- BFF API の契約（実装済みのもの）
+- MCP サーバーのツール仕様
+- データベーステーブル設計と RPC 関数
+- パフォーマンス・セキュリティに関する設計判断
 
-## What Belongs in Archive
+## docs/archive/ に置くもの
 
-- Implementation plans that are already complete
-- Early design memos that have been superseded
-- Concept notes that explain the product direction but no longer define the live behavior
-- Migration notes that have already been executed or replaced
+- 完了済みの実装計画・移行手順
+- 現行と異なる旧設計メモ
+- 廃止されたフロー・仕様（Edge Functions、JSON Orchestration 等）
+- コンセプトノート（製品方向性の議論で、現在の動作を定義しないもの）
