@@ -510,17 +510,25 @@ export function GoalEditor({
     const title = window.prompt(`Enter title for new ${table.replace(/s$/, "")}:`);
     if (!title?.trim()) return;
     try {
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+      };
+
+      if (table === "subjects") {
+        payload.goal_id = detail.goal.id;
+        payload.status = "active";
+      } else if (table === "issues" || table === "tasks") {
+        payload.subject_id = activeSubjectId;
+        payload.status = table === "tasks" ? "todo" : "open";
+      }
+
       const res = await fetch(`/api/records/${table}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${sessionToken}`,
         },
-        body: JSON.stringify({
-          goal_id: detail.goal.id,
-          title: title.trim(),
-          status: table === "events" ? undefined : table === "tasks" ? "todo" : "active"
-        })
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to create record");
       onSaved(detail.goal); // trigger refresh
@@ -716,7 +724,12 @@ export function GoalEditor({
             { label: "Tasks", table: "tasks", items: detail.tasks },
             { label: "Events", table: "events", items: detail.events },
           ] as const
-        ).map(({ label, table, items }) => (
+        ).map(({ label, table, items }) => {
+          const needsSubject = table === "issues" || table === "tasks";
+          const addDisabled = needsSubject && !activeSubjectId;
+          const hideAddButton = table === "events";
+
+          return (
           <div key={label}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>
@@ -725,8 +738,10 @@ export function GoalEditor({
                   ({items.length})
                 </span>
               </div>
+              {!hideAddButton && (
               <button
                 type="button"
+                disabled={addDisabled}
                 onClick={() => void handleCreateRecord(table)}
                 style={{
                   padding: "2px 8px",
@@ -734,20 +749,20 @@ export function GoalEditor({
                   borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--line)",
                   background: "transparent",
-                  color: "var(--text)",
-                  cursor: "pointer",
+                  color: addDisabled ? "var(--muted)" : "var(--text)",
+                  cursor: addDisabled ? "not-allowed" : "pointer",
+                  opacity: addDisabled ? 0.5 : 1,
                 }}
               >
                 + Add {label.replace(/s$/, "")}
               </button>
+              )}
             </div>
             <RenderRecordList
               items={items as Record<string, unknown>[]}
               table={table}
               sessionToken={sessionToken}
               onRefresh={() => {
-                // To trigger a re-fetch, we can just call onSaved with current goal
-                // which will cause parent to refreshContextMap and reload goal details
                 onSaved(detail.goal);
               }}
               activeSubjectId={activeSubjectId}
@@ -762,7 +777,8 @@ export function GoalEditor({
               allTasks={detail.tasks}
             />
           </div>
-        ))}
+          );
+        })}
         
         {/* Artifacts section */}
         <div>
