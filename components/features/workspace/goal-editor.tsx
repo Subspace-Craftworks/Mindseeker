@@ -433,6 +433,7 @@ export function GoalEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
+  const [showInactiveRelated, setShowInactiveRelated] = useState(false);
 
   // Artifact modal state
   const [openArtifactId, setOpenArtifactId] = useState<string | null>(null);
@@ -713,8 +714,12 @@ export function GoalEditor({
 
       {/* ── Related data (read-only) ── */}
       <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "var(--pane-border)", paddingBottom: 4 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "var(--pane-border)", paddingBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           Related data
+          <label style={{ fontSize: 10, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer", textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}>
+            <input type="checkbox" checked={showInactiveRelated} onChange={(e) => setShowInactiveRelated(e.target.checked)} />
+            show Inactive
+          </label>
         </div>
 
         {(
@@ -729,13 +734,18 @@ export function GoalEditor({
           const addDisabled = needsSubject && !activeSubjectId;
           const hideAddButton = table === "events";
 
+          const INACTIVE_STATUSES = ["inactive", "done", "completed", "resolved", "closed", "cancelled"];
+          const filteredItems = showInactiveRelated
+            ? items
+            : items.filter((item) => !INACTIVE_STATUSES.includes(String((item as Record<string, unknown>).status ?? "")));
+
           return (
           <div key={label}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>
                 {label}
                 <span style={{ marginLeft: 6, fontSize: 11, color: "var(--muted)", fontWeight: 400 }}>
-                  ({items.length})
+                  ({filteredItems.length})
                 </span>
               </div>
               {!hideAddButton && (
@@ -759,7 +769,7 @@ export function GoalEditor({
               )}
             </div>
             <RenderRecordList
-              items={items as Record<string, unknown>[]}
+              items={filteredItems as Record<string, unknown>[]}
               table={table}
               sessionToken={sessionToken}
               onRefresh={() => {
