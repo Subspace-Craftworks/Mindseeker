@@ -6,6 +6,7 @@ import { requireSupabaseUser } from "@/lib/auth";
 import { upsertChatThread } from "@/lib/db/chat-threads";
 import { getDifyApiBaseUrl, getDifyApiKey } from "@/lib/utils/env";
 import { createSession, getSessionByConversation, updateSessionConversation } from "@/lib/db/sessions";
+import { checkRateLimit, recordChatUsage, ensureUserProfile } from "@/lib/db/rate-limit";
 
 type StreamEvent =
   | {
@@ -156,6 +157,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { ok: false, error: { code: "VALIDATION_ERROR", message: "message is required" } },
         { status: 400 },
+      );
+    }
+
+    // Ensure user profile exists and check rate limit
+    await ensureUserProfile(user.id);
+    const rateLimit = await checkRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: rateLimit.reason ?? "Usage limit reached",
+            details: {
+              tier: rateLimit.tier,
+              dailyUsed: rateLimit.dailyUsed,
+              dailyLimit: rateLimit.dailyLimit,
+              totalUsed: rateLimit.totalUsed,
+              totalLimit: rateLimit.totalLimit,
+            },
+          },
+        },
+        { status: 429 },
       );
     }
 
@@ -323,6 +347,9 @@ export async function POST(req: NextRequest) {
               appKey: "mindseeker",
               currentGoalId: finalCurrentGoalId,
             });
+
+            // Record usage for rate limiting
+            void recordChatUsage(user.id);
           }
 
           controller.enqueue(
