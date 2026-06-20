@@ -1,69 +1,72 @@
-# Mindseeker システムアーキテクチャ・設計仕様書
+# Mindseeker システムアーキテクチャ
 
-本書は、Supabase、Dify、Vercel (Next.js) を統合して構築された「AI駆動型ゴール・タスク管理アプリケーション」である **Mindseeker** のシステム構成、コンポーネントの役割、主要なデータフロー、およびデータベース設計をまとめた仕様・設計文書です。
-
----
+Updated: 2026-06-20
 
 ## 1. システム全体構成
 
-Mindseeker は、ユーザーが AI チャットを通じてゴール（目標）やそれに紐づくサブジェクト、課題、タスクを設計・管理できるシステムです。以下の3つのコアプラットフォームが密に連携しています。
+Mindseeker は、ユーザーが AI チャットを通じてゴールやタスクを設計・管理できるシステムです。
 
-* **フロントエンド & BFF (Next.js / Vercel)**:
-  * ユーザーが操作するUI画面（チャット画面、ゴール管理画面）の提供。
-  * 安全な中継局（BFF）として、外部プラットフォーム (Dify, Supabase) との連携 API を実装。
-* **AI エージェントプラットフォーム (Dify)**:
-  * チャット対話のバックエンド。ユーザーの発言の意図（セマンティクス）を解釈。
-  * データベースの更新が必要な場合、OpenAPI で定義された「ツール（アクション）」を介して Supabase バックエンドを呼び出す。
-* **バックエンド & データベース (Supabase)**:
-  * **Supabase Auth**: JWT を利用した安全なユーザー認証。
-  * **PostgreSQL**: ゴールやタスク、チャットスレッドなどの永続化層。Row Level Security (RLS) によるマルチテナント保護。
-  * **Edge Functions**: Dify エージェントから API キー認証を伴う Webhook / Tool アクションを受け付け、データベースを操作する単一エントリポイント（API ルーター）。
+### コアプラットフォーム
+
+| 層 | 技術 | 役割 |
+|----|------|------|
+| フロントエンド & BFF | Next.js 15 (Vercel) | UI 提供、認証ゲートウェイ、Dify/DB 中継 |
+| AI エージェント | Dify | チャット対話、意図解釈、MCP ツール呼び出し |
+| MCP サーバー | Next.js API Route 内 | Dify からの tool call を受け、DB を操作 |
+| データベース & 認証 | Supabase | PostgreSQL + RLS + Auth |
 
 ### 連携ブロック図
+
 ```mermaid
 graph TD
     User([ユーザー/ブラウザ]) <-->|HTTPS / SSE| NextFE[Next.js FE (Vercel)]
     NextFE <-->|BFF API / Auth Token| NextBFF[Next.js BFF (Vercel)]
     NextBFF <-->|REST API (Bearer Token)| Dify[Dify Chat Agent]
-    Dify <-->|OpenAPI Tool Call| EdgeFunc[Supabase Edge Functions]
-    EdgeFunc <-->|SQL / Service Role| DB[(Supabase DB)]
-    NextBFF <-->|client-side / server-side Auth| SupaAuth[Supabase Auth]
-    NextBFF <-->|Read Data| DB
+    Dify <-->|MCP tool call (JSON-RPC)| MCP[MCP Server (Vercel)]
+    MCP <-->|SQL / Service Role| DB[(Supabase DB)]
+    NextBFF <-->|Supabase Auth| SupaAuth[Supabase Auth]
+    NextBFF <-->|RPC / Read| DB
 ```
 
 ---
 
-## 2. コンポーネント設計と役割分担
+## 2. コンポーネント設計
 
 ### 2.1. フロントエンド & BFF (Next.js)
-* **認証ゲートウェイ**: `/login` にて Google/GitHub 認証を行い、`/auth/callback` を経由してセッションを確率。セッション情報はブラウザクッキーおよび Supabase クライアント側で保持。
-* **BFF ルート (`/app/api/`)**:
-  * すべての保護ルート（`/api/chat`, `/api/goals` など）は、ヘッダーの `Authorization: Bearer <supabase_access_token>` を検証し、認証済みユーザーのみ実行を許可します。
-  * Dify の API 認証（`DIFY_API_KEY`）はサーバーサイドでのみ保持され、BFF が代理でリクエストを送信するため、認証キーが漏洩するリスクを防止します。
-  * Dify からの SSE (Server-Sent Events) ストリームをパース・整理し、フロントエンドに統一された SSE 規格で再配信します。
+
+- **認証ゲートウェイ**: `/login` で Google/GitHub 認証 → `/auth/callback` でセッション確立
+- **BFF ルート (`/app/api/`)**: すべての保護ルートは `Authorization: Bearer <supabase_access_token>` を検証
+- **Dify 代理**: `DIFY_API_KEY` はサーバーサイドのみ保持。BFF が代理でリクエスト送信
+- **SSE 中継**: Dify からのストリームをパースし、統一フォーマットで FE に再配信
+- **Session 解決**: `conversation_id` から sessions テーブルを引き、コンテキストを構築して Dify に送信
 
 ### 2.2. Dify (AI Chat Agent)
-* ユーザーとのチャットコンテキスト（会話履歴）を保持します。
-* プロンプト定義に基づいて、ユーザーのメッセージが「目標の作成」「タスクの追加」「進捗の要約」などにあたるかを識別し、登録された OpenAPI ツールを実行します。
-* **Dify ツール仕様書**:
-  * [dify/planning-api.openapi.yaml](file:///d:/onedrive/★AI/Mindseeker/dify/planning-api.openapi.yaml): ゴール/タスクの CRUD 操作。
-  * [dify/context-api.openapi.yaml](file:///d:/onedrive/★AI/Mindseeker/dify/context-api.openapi.yaml): 現在の会話のフォーカス対象ゴール（`current_goal_id`）の紐付け。
 
-### 2.3. Supabase
-* **Edge Functions (`planning-api`, `context-api`)**:
-  * Dify からの API 呼び出しを受け取るサーバーレス関数（Deno 環境）。
-  * 認証ヘッダー `X-Planning-Api-Key` にて安全な接続を担保。
-  * `SUPABASE_SERVICE_ROLE_KEY` を使用してアクセスするため、RLS ポリシーをバイパスして、要求された `user_id` に対する各種書き込み・編集処理を代行します。
-* **RLSポリシー (Row Level Security)**:
-  * ユーザー自身のデータ（`user_id = auth.uid()`）のみに直接 `SELECT`/`INSERT`/`UPDATE` ができるようデータベース層で堅牢に保護。
+- チャットコンテキスト（会話履歴）を保持
+- BFF から受け取った `inputs`（`session_id`, `current_goal_id`, `current_goal_context`）を参照
+- ユーザーの意図を解釈し、MCP サーバーのツールを呼び出してデータベースを直接操作
+- ツール実行結果を確認した上で回答を生成
+
+### 2.3. MCP サーバー
+
+- Next.js API Route (`/api/mcp/[profile]`) として実装
+- JSON-RPC 2.0 プロトコルで `tools/list` と `tools/call` を処理
+- 独自 OAuth JWT で認証（`OAUTH_JWT_SECRET` で署名検証）
+- プロファイル別アクセス制御（`dify-main`, `dify-sub`, `general`）
+- ツール実行時に `session_id` があれば sessions テーブルの `current_goal_id` を自動更新
+
+### 2.4. Supabase
+
+- **Auth**: Google/GitHub OAuth プロバイダ。JWT を発行
+- **PostgreSQL**: RLS により `user_id = auth.uid()` でマルチテナント保護
+- **RPC 関数**: `get_goal_context`, `get_context_map`, `get_goal_detail` — 1クエリで関連データを一括取得
+- **Service Role**: BFF と MCP サーバーが使用（RLS バイパスだが user_id 検証は必須）
 
 ---
 
 ## 3. 主要なデータフロー
 
-### 3.1. チャット対話とツール（アクション）実行フロー
-
-ユーザーが「目標を作成して」と入力してから、実際にデータベースが更新され、回答が返ってくるまでの処理シーケンスです。
+### 3.1. チャット対話と MCP ツール実行フロー
 
 ```mermaid
 sequenceDiagram
@@ -72,54 +75,65 @@ sequenceDiagram
     participant FE as Next.js FE
     participant BFF as Next.js BFF
     participant Dify as Dify Chat Engine
-    participant Edge as Supabase Edge Functions
+    participant MCP as MCP Server
     participant DB as Supabase DB
 
     User->>FE: チャット入力「目標を作って」
-    FE->>BFF: POST /api/chat { message } (Bearer: Token)
-    BFF->>BFF: Supabase Token検証
-    BFF->>Dify: POST /chat-messages { query, user: user_id, conversation_id } (Bearer: DifyKey)
-    Note over Dify: プロンプトとOpenAPI定義を解釈<br/>「create_goal」を選択
-    Dify->>Edge: POST /functions/v1/planning-api { action: "create_goal", params: { title, user_id } } (ApiKey)
-    Edge->>DB: INSERT INTO goals (user_id, title)
-    DB-->>Edge: 返却 (Goal ID 等)
-    Edge-->>Dify: JSON { ok: true, data: { id, title } }
-    Note over Dify: レスポンスを基に回答文を生成
-    Dify-->>BFF: SSEデータブロック送信 (data: { answer: "作成しました", conversation_id })
-    BFF-->>FE: カスタムSSEストリーム配信
-    FE-->>User: チャット画面にストリーミング表示、コンテキスト更新
+    FE->>BFF: POST /api/chat { message, conversation_id }
+    BFF->>DB: sessions テーブルから current_goal_id 取得
+    BFF->>DB: RPC get_goal_context でコンテキスト生成
+    BFF->>Dify: POST /chat-messages { inputs: {session_id, current_goal_id, context}, query }
+    Note over Dify: 意図を解釈し「create_goal」ツールを選択
+    Dify->>MCP: tools/call { name: "create_goal", arguments: {title, session_id} }
+    MCP->>DB: INSERT INTO goals (...)
+    MCP->>DB: UPDATE sessions SET current_goal_id = new_goal_id
+    MCP-->>Dify: ツール実行結果 (JSON)
+    Note over Dify: 結果を基に回答文を生成
+    Dify-->>BFF: SSE ストリーム (answer テキスト)
+    BFF->>DB: UPDATE sessions SET dify_conversation_id
+    BFF->>DB: UPSERT chat_threads
+    BFF-->>FE: SSE ストリーム配信
+    FE-->>User: チャット画面にストリーミング表示
 ```
+
+### 3.2. セッションとコンテキスト管理
+
+- **sessions テーブル**: BFF が Dify 呼び出し前に作成/参照。`current_goal_id` を保持
+- **current_goal_id の更新**: MCP ツール実行時に自動（create_goal → 新ID、complete_goal → null）
+- **コンテキスト注入**: BFF が sessions の `current_goal_id` から RPC でゴール情報を取得し、Dify の `inputs` に含める
 
 ---
 
-## 4. データベース設計 (主要テーブル)
+## 4. データベース設計
 
-すべての主要プランニングオブジェクトは、`user_id` によるテナントスコープを伴い、UUID 形式で相互にリレーションを持っています。
+すべてのテーブルは `user_id` によるテナントスコープを持ち、RLS で保護されています。
 
-### 4.1. テーブル一覧と親子リレーション
-* **`chat_threads`**: 会話スレッドの管理。Dify 側の `conversation_id` と現在のフォーカス目標である `current_goal_id` を保持。
-* **`goals` (目標)**: 最上位オブジェクト（例: 「英会話を習得する」）。
-* **`subjects` (サブジェクト)**: 目標の下位カテゴリ・領域（例: 「リスニング」「文法」）。`goal_id` を親に持つ。
-* **`issues` (課題/論点)**: 解決すべき問題（例: 「シャドーイングで音が聴き取れない」）。`subject_id` を親に持つ。
-* **`tasks` (タスク)**: 具体的なアクション（例: 「毎日15分CNNを聴く」）。`subject_id`（必須）および `issue_id`（任意）を親に持つ。
-* **`events` (履歴/出来事)**: アクションのログ（例: 「Difyとの会話でリスニングを強化する方針とした」）。各オブジェクトの ID を任意で関連付け。
-* **`application_logs`**: BFF / Edge Function でのエラーロギング。
+### 4.1. テーブル一覧
 
-### 4.2. データベース ER ダイアグラム
+| テーブル | 説明 |
+|---------|------|
+| `goals` | 最上位目標（例: 「英会話を習得する」） |
+| `subjects` | ゴール配下のカテゴリ・テーマ（例: 「リスニング」）。`goal_id` を親に持つ |
+| `issues` | 解決すべき課題（例: 「音が聴き取れない」）。`subject_id` を親に持つ |
+| `tasks` | 具体的アクション（例: 「毎日15分CNNを聴く」）。`subject_id` 必須、`issue_id` 任意 |
+| `events` | 活動ログ（会話、判断、進捗）。各オブジェクト ID を任意で関連付け |
+| `chat_threads` | Dify conversation の管理。`dify_conversation_id` を保持 |
+| `sessions` | コンテキスト状態管理。`current_goal_id` と `dify_conversation_id` を保持 |
+| `user_profiles` | ユーザー Tier（free / paid / contributor） |
+| `chat_usage` | チャット利用回数の記録（Rate Limit 用） |
+| `artifacts` | ゴールに紐づくドキュメント（Markdown） |
+| `application_logs` | BFF / MCP のエラー・情報ログ |
+
+### 4.2. ER ダイアグラム（プランニングオブジェクト）
+
 ```mermaid
 erDiagram
-    chat_threads {
-        uuid id PK
-        uuid user_id FK
-        string dify_conversation_id
-        uuid current_goal_id FK
-        string title
-    }
     goals {
         uuid id PK
         uuid user_id FK
         string title
         string description
+        string background
         string status
     }
     subjects {
@@ -128,6 +142,7 @@ erDiagram
         uuid goal_id FK
         string title
         string status
+        string priority
     }
     issues {
         uuid id PK
@@ -135,6 +150,7 @@ erDiagram
         uuid subject_id FK
         string title
         string status
+        string severity
     }
     tasks {
         uuid id PK
@@ -153,9 +169,15 @@ erDiagram
         uuid task_id FK
         string event_type
         string title
+        string body
+    }
+    sessions {
+        uuid id PK
+        uuid user_id FK
+        uuid current_goal_id FK
+        string dify_conversation_id
     }
 
-    goals ||--o{ chat_threads : "is_focused_by"
     goals ||--o{ subjects : "contains"
     subjects ||--o{ issues : "categorizes"
     subjects ||--o{ tasks : "owns"
@@ -164,4 +186,27 @@ erDiagram
     subjects ||--o{ events : "logs"
     issues ||--o{ events : "logs"
     tasks ||--o{ events : "logs"
+    goals ||--o{ sessions : "focused_by"
 ```
+
+---
+
+## 5. パフォーマンス最適化
+
+| 箇所 | 手法 |
+|------|------|
+| コンテキスト生成（送信前） | PostgreSQL RPC `get_goal_context` で1クエリ |
+| コンテキストマップ取得（受信後） | PostgreSQL RPC `get_context_map` で1クエリ |
+| ゴール詳細取得（受信後） | PostgreSQL RPC `get_goal_detail` で1クエリ |
+| 受信後のリフレッシュ | `refreshContextMap` と `refreshGoalDetail` を `Promise.all` で並列実行 |
+
+---
+
+## 6. 関連ドキュメント
+
+| ドキュメント | 内容 |
+|------------|------|
+| [session-based-context-injection.md](./session-based-context-injection.md) | Session 方式の詳細仕様 |
+| [authentication.md](./authentication.md) | 認証・認可の仕様 |
+| [user-tiers-and-rate-limits.md](./user-tiers-and-rate-limits.md) | ユーザー Tier と利用制限 |
+| [open-issues.md](./open-issues.md) | 未解決の課題 |

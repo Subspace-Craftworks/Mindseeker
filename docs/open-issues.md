@@ -1,36 +1,18 @@
 # Open Issues
 
-Updated: 2026-06-10
+Updated: 2026-06-20
 
-This file should contain only the remaining work and known gaps.
-When an issue is closed, remove it from here instead of leaving it in a plan doc.
+未解決の課題・改善候補のみを記載します。解決済みの項目は削除してください。
 
-## 1. Chat thread deletion resilience
+---
 
-- `DELETE /api/chat/threads/[id]` deletes the Dify conversation first and the local thread second.
-- If Dify deletion fails, the whole request fails and the local record remains.
-- We may want a safer cleanup strategy if upstream deletion is flaky.
+## 1. チャットスレッド削除の耐障害性
 
-## 2. Goal detail query shaping
+- `DELETE /api/chat/threads/[id]` は Dify 側の conversation 削除を先に試み、失敗しても warn で続行する実装。
+- Dify 側が恒常的に不安定な場合、ゴミが残り続ける。
+- 定期クリーンアップ or リトライキューの検討が必要かもしれない。
 
-- `getGoalDetail()` loads all user issues and tasks, then filters them in memory.
-- This is fine for the current data size, but it is not the tightest query shape.
-- If the dataset grows or relation rules get stricter, the query should be narrowed at the database level.
+## 2. スレッド未フォーカス時のコンテキスト表示
 
-## 3. Current goal editing flow
-
-- The app can read `current_goal_id` from `chat_threads`.
-- There is no explicit in-UI control yet for assigning or changing the current goal from the chat workspace.
-- If goal switching becomes a core interaction, the chat UI needs a direct control path.
-
-## 4. Goals UI write actions
-
-- The BFF already supports `POST /api/goals`.
-- The current Goals screen is read-only and does not expose create/edit actions.
-- If interactive goal editing becomes necessary, the screen needs a proper form flow.
-
-## 5. Context overview when no thread is focused
-
-- `/api/context-map` returns a full goal overview list when no thread current goal is set.
-- That behavior is useful, but it may need refinement if the chat UI later needs richer context summaries.
-
+- `/api/context-map` はスレッドに紐づくゴールがない場合、全ゴールの概要リストを返す。
+- 現状は意図通りだが、将来的にチャット UI でよりリッチなコンテキストサマリーが必要になる可能性がある。
