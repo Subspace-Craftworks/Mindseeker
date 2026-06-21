@@ -15,12 +15,12 @@ const plans = [
     price: '¥0',
     description: 'まずは試してみたい方へ',
     features: [
-      { text: 'AIチャット（1日10回）', included: true },
-      { text: '累計100回まで利用可能', included: true },
+      { text: 'AIチャット（1日10回 / 累計100回）', included: true },
+      { text: 'アクティブゴール 3個まで', included: true },
       { text: 'Goal Tree / Subject / Task 管理', included: true },
       { text: 'MCP連携（ChatGPT等）', included: true },
       { text: '無制限チャット', included: false },
-      { text: '優先サポート', included: false },
+      { text: '無制限ゴール作成', included: false },
     ],
   },
   {
@@ -29,9 +29,9 @@ const plans = [
     description: '本格的にゴール達成を目指す方へ',
     features: [
       { text: 'AIチャット無制限', included: true },
+      { text: 'アクティブゴール無制限', included: true },
       { text: 'Goal Tree / Subject / Task 管理', included: true },
       { text: 'MCP連携（ChatGPT等）', included: true },
-      { text: 'Artifacts 無制限', included: true },
       { text: '優先サポート', included: true },
       { text: '新機能の先行アクセス', included: true },
     ],
