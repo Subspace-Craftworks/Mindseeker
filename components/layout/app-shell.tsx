@@ -20,10 +20,17 @@ export function AppShell({ children, userEmail }: AppShellProps) {
     try {
       const supabase = createBrowserSupabaseClient();
       await supabase.auth.signOut();
-      router.replace("/login");
-      router.refresh();
+    } catch {
+      // Ignore sign-out errors
     } finally {
-      setSigningOut(false);
+      // Clear all supabase cookies manually and redirect
+      document.cookie.split(";").forEach((c) => {
+        const name = c.trim().split("=")[0];
+        if (name.startsWith("sb-")) {
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+      });
+      window.location.href = "/login";
     }
   }
 

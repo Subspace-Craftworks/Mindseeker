@@ -1102,6 +1102,39 @@ export function UnifiedWorkspace() {
     }
   }
 
+  // Show loading animation until session and initial data are ready
+  if (!sessionToken || (loadingThreads && !contextMap)) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          width: "100%",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div className="loading-spinner" />
+        <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading workspace...</div>
+        <style>{`
+          .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--line);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{

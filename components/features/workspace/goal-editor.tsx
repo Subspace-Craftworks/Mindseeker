@@ -678,7 +678,11 @@ export function GoalEditor({
             {onNewChat && (
               <button
                 type="button"
-                onClick={() => onNewChat(detail.goal.id)}
+                onClick={() => {
+                  if (window.confirm(`ゴール「${detail.goal.title}」に関するチャットを新規作成しますか？`)) {
+                    onNewChat(detail.goal.id);
+                  }
+                }}
                 disabled={saving || deleting}
                 style={{
                   padding: "6px 16px",
