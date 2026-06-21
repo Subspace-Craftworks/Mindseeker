@@ -890,21 +890,40 @@ export async function executeTool(name: string, args: JsonObject, userId: string
   if (!handler) {
     throw new Error(`Unknown tool: ${name}`);
   }
-  
+
+  const supabase = getSupabaseClient();
+  // Extract session_id from args (not passed to handler)
+  const { session_id, ...restArgs } = args as { session_id?: string } & JsonObject;
+
+  // Resolve actual user_id: if session_id is provided, use the session's user_id
+  // This ensures multi-user correctness when Dify (single OAuth token) calls on behalf of different users
+  let resolvedUserId = userId;
+  if (session_id && typeof session_id === "string") {
+    try {
+      const { data: session } = await supabase
+        .from("sessions")
+        .select("user_id")
+        .eq("id", session_id)
+        .maybeSingle();
+      if (session?.user_id) {
+        resolvedUserId = session.user_id;
+      }
+    } catch (err) {
+      console.error("Failed to resolve user_id from session:", err);
+    }
+  }
+
   // Check goal limit for create_goal
   if (name === "create_goal") {
     const { checkGoalLimit } = await import("@/lib/db/rate-limit");
-    const limitResult = await checkGoalLimit(userId);
+    const limitResult = await checkGoalLimit(resolvedUserId);
     if (!limitResult.allowed) {
       throw new Error(limitResult.reason ?? "Goal limit reached");
     }
   }
 
-  const supabase = getSupabaseClient();
-  // Extract session_id from args (not passed to handler)
-  const { session_id, ...restArgs } = args as { session_id?: string } & JsonObject;
-  // Inject userId into params
-  const params = { ...restArgs, user_id: userId };
+  // Inject resolvedUserId into params
+  const params = { ...restArgs, user_id: resolvedUserId };
   const result = await handler(supabase, params);
 
   // Auto-update sessions.current_goal_id when session_id is provided
