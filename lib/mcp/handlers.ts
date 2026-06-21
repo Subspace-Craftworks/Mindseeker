@@ -891,6 +891,15 @@ export async function executeTool(name: string, args: JsonObject, userId: string
     throw new Error(`Unknown tool: ${name}`);
   }
   
+  // Check goal limit for create_goal
+  if (name === "create_goal") {
+    const { checkGoalLimit } = await import("@/lib/db/rate-limit");
+    const limitResult = await checkGoalLimit(userId);
+    if (!limitResult.allowed) {
+      throw new Error(limitResult.reason ?? "Goal limit reached");
+    }
+  }
+
   const supabase = getSupabaseClient();
   // Extract session_id from args (not passed to handler)
   const { session_id, ...restArgs } = args as { session_id?: string } & JsonObject;

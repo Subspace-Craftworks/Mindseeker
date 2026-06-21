@@ -105,3 +105,45 @@ export async function ensureUserProfile(userId: string): Promise<void> {
     .select()
     .maybeSingle();
 }
+
+
+const GOAL_LIMIT_FREE = 3;
+
+export type GoalLimitResult = {
+  allowed: boolean;
+  tier: UserTier;
+  activeGoals: number;
+  limit: number | null;
+  reason?: string;
+};
+
+export async function checkGoalLimit(userId: string): Promise<GoalLimitResult> {
+  const tier = await getUserTier(userId);
+
+  if (tier !== "free") {
+    return { allowed: true, tier, activeGoals: 0, limit: null };
+  }
+
+  const supabase = createSupabaseServiceClient();
+  const { count, error } = await supabase
+    .from("goals")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  if (error) throw error;
+
+  const activeGoals = count ?? 0;
+
+  if (activeGoals >= GOAL_LIMIT_FREE) {
+    return {
+      allowed: false,
+      tier,
+      activeGoals,
+      limit: GOAL_LIMIT_FREE,
+      reason: `Free plan allows up to ${GOAL_LIMIT_FREE} active goals`,
+    };
+  }
+
+  return { allowed: true, tier, activeGoals, limit: GOAL_LIMIT_FREE };
+}

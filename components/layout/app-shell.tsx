@@ -9,9 +9,10 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 type AppShellProps = {
   children: ReactNode;
   userEmail?: string | null;
+  tier?: string | null;
 };
 
-export function AppShell({ children, userEmail }: AppShellProps) {
+export function AppShell({ children, userEmail, tier }: AppShellProps) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -58,6 +59,22 @@ export function AppShell({ children, userEmail }: AppShellProps) {
           </div>
         </div>
         <nav style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {tier && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: "var(--radius-sm)",
+                background: tier === "free" ? "var(--line)" : "var(--accent)",
+                color: tier === "free" ? "var(--muted)" : "white",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {tier}
+            </span>
+          )}
           <button
             type="button"
             onClick={handleSignOut}

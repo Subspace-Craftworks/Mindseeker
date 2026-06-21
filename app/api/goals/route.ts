@@ -50,6 +50,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check goal limit
+    const { checkGoalLimit } = await import("@/lib/db/rate-limit");
+    const limitResult = await checkGoalLimit(user.id);
+    if (!limitResult.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "GOAL_LIMIT_REACHED",
+            message: limitResult.reason ?? "Goal limit reached",
+            details: { tier: limitResult.tier, activeGoals: limitResult.activeGoals, limit: limitResult.limit },
+          },
+        },
+        { status: 429 },
+      );
+    }
+
     const goal = await createGoal({
       userId: user.id,
       title,
