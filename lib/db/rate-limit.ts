@@ -99,11 +99,10 @@ export async function recordChatUsage(userId: string): Promise<void> {
 
 export async function ensureUserProfile(userId: string): Promise<void> {
   const supabase = createSupabaseServiceClient();
+  // Only insert if not exists — never overwrite existing tier
   await supabase
     .from("user_profiles")
-    .upsert({ user_id: userId, tier: "free" }, { onConflict: "user_id" })
-    .select()
-    .maybeSingle();
+    .upsert({ user_id: userId, tier: "free" }, { onConflict: "user_id", ignoreDuplicates: true });
 }
 
 
