@@ -8,8 +8,8 @@ Updated: 2026-06-20
 - [ ] アプリをサブドメインに移行（app.subspace-craftworks.jp）
 - [ ] アプリ移行に伴う Supabase Auth リダイレクト URL 更新
 - [ ] アプリ移行に伴う Dify MCP 接続先 URL 更新
-- [ ] LP の GitHub リンクを実際の URL に差し替え
-- [ ] LP の「β版を試す」リンクを実際の URL に差し替え
+- [x] LP の GitHub リンクを実際の URL に差し替え
+- [x] LP の「β版を試す」リンクを実際の URL に差し替え
 - [ ] LP の Workspace preview にスクリーンショット追加
 
 ## MCP / カスタムGPT
