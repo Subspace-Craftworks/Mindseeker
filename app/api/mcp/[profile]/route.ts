@@ -168,6 +168,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
         userId,
       });
 
+      // Handle send_payload specially (batch operations)
+      if (name === "send_payload") {
+        try {
+          const { sendPayload } = await import("@/lib/mcp/handlers");
+          const payload = await sendPayload(args, userId);
+          return result(body.id, textContent(payload));
+        } catch (err: any) {
+          return error(body.id, -32603, err.message || "Internal Tool Error");
+        }
+      }
+
       try {
         const payload = await executeTool(name, args, userId);
         return result(body.id, textContent(payload));

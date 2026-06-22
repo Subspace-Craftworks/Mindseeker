@@ -422,6 +422,29 @@ const RAW_TOOLS = [
       },
       required: ["artifact_id"]
     }
+  },
+  {
+    name: "send_payload",
+    description: "Execute multiple create/update operations in a single call. Operations run sequentially and stop on first failure. Use $ref.field syntax to reference results from previous operations (e.g. $goal_1.id).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operations: {
+          type: "array",
+          description: "List of operations to execute sequentially",
+          items: {
+            type: "object",
+            properties: {
+              action: { type: "string", description: "Action name: create_goal, update_goal, create_subject, update_subject, create_issue, update_issue, create_task, update_task" },
+              ref: { type: "string", description: "Optional reference name to use in subsequent operations (e.g. 'goal_1')" },
+              params: { type: "object", description: "Parameters for the action (same as individual tool params)" }
+            },
+            required: ["action", "params"]
+          }
+        }
+      },
+      required: ["operations"]
+    }
   }
 ];
 

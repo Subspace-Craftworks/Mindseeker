@@ -947,6 +947,149 @@ export async function executeTool(name: string, args: JsonObject, userId: string
   return result;
 }
 
+// Allowed actions in sendPayload
+const PAYLOAD_ALLOWED_ACTIONS = new Set([
+  "create_goal", "update_goal",
+  "create_subject", "update_subject",
+  "create_issue", "update_issue",
+  "create_task", "update_task",
+]);
+
+type PayloadOperation = {
+  action: string;
+  ref?: string;
+  params: Record<string, unknown>;
+};
+
+type PayloadResult = {
+  ref: string | null;
+  action: string;
+  ok: boolean;
+  data?: unknown;
+  error?: string;
+};
+
+/**
+ * Resolves $ref.field placeholders in params using previous results.
+ */
+function resolveRefs(params: Record<string, unknown>, refMap: Map<string, Record<string, unknown>>): Record<string, unknown> {
+  const resolved: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string" && value.startsWith("$")) {
+      const match = value.match(/^\$(\w+)\.(\w+)$/);
+      if (match) {
+        const [, refName, field] = match;
+        const refData = refMap.get(refName);
+        if (refData && field in refData) {
+          resolved[key] = refData[field];
+          continue;
+        }
+      }
+    }
+    resolved[key] = value;
+  }
+  return resolved;
+}
+
+/**
+ * Execute multiple operations in sequence. Stops on first failure.
+ * Supports $ref.field placeholders to reference results from previous operations.
+ */
+export async function sendPayload(args: JsonObject, userId: string): Promise<{ success: boolean; results: PayloadResult[] }> {
+  const sessionId = typeof args.session_id === "string" ? args.session_id : undefined;
+  const operations = Array.isArray(args.operations) ? args.operations as PayloadOperation[] : [];
+
+  if (operations.length === 0) {
+    return { success: false, results: [{ ref: null, action: "", ok: false, error: "No operations provided" }] };
+  }
+
+  // Resolve user_id from session
+  const supabase = getSupabaseClient();
+  let resolvedUserId = userId;
+  if (sessionId) {
+    try {
+      const { data: session } = await supabase
+        .from("sessions")
+        .select("user_id")
+        .eq("id", sessionId)
+        .maybeSingle();
+      if (session?.user_id) {
+        resolvedUserId = session.user_id;
+      }
+    } catch (err) {
+      console.error("Failed to resolve user_id from session in sendPayload:", err);
+    }
+  }
+
+  const results: PayloadResult[] = [];
+  const refMap = new Map<string, Record<string, unknown>>();
+
+  for (const op of operations) {
+    if (!PAYLOAD_ALLOWED_ACTIONS.has(op.action)) {
+      results.push({ ref: op.ref ?? null, action: op.action, ok: false, error: `Action not allowed: ${op.action}` });
+      return { success: false, results };
+    }
+
+    const handler = TOOL_HANDLERS.get(op.action);
+    if (!handler) {
+      results.push({ ref: op.ref ?? null, action: op.action, ok: false, error: `Unknown action: ${op.action}` });
+      return { success: false, results };
+    }
+
+    // Check goal limit for create_goal
+    if (op.action === "create_goal") {
+      try {
+        const { checkGoalLimit } = await import("@/lib/db/rate-limit");
+        const limitResult = await checkGoalLimit(resolvedUserId);
+        if (!limitResult.allowed) {
+          results.push({ ref: op.ref ?? null, action: op.action, ok: false, error: limitResult.reason ?? "Goal limit reached" });
+          return { success: false, results };
+        }
+      } catch (err) {
+        results.push({ ref: op.ref ?? null, action: op.action, ok: false, error: "Failed to check goal limit" });
+        return { success: false, results };
+      }
+    }
+
+    // Resolve $ref placeholders
+    const resolvedParams = resolveRefs(op.params ?? {}, refMap);
+    const params = { ...resolvedParams, user_id: resolvedUserId };
+
+    try {
+      const result = await handler(supabase, params);
+      const data = result as Record<string, unknown>;
+      results.push({ ref: op.ref ?? null, action: op.action, ok: true, data });
+
+      // Store result in refMap for future reference
+      if (op.ref) {
+        refMap.set(op.ref, data);
+      }
+
+      // Auto-update session current_goal_id
+      if (sessionId) {
+        try {
+          const { updateSessionGoal } = await import("@/lib/db/sessions");
+          if (SESSION_GOAL_FOCUS_TOOLS.has(op.action)) {
+            const goalId = data?.id ?? (data as any)?.goal?.id;
+            if (goalId) {
+              await updateSessionGoal(sessionId, String(goalId));
+            }
+          } else if (SESSION_GOAL_CLEAR_TOOLS.has(op.action)) {
+            await updateSessionGoal(sessionId, null);
+          }
+        } catch {
+          // Session update failure is non-fatal
+        }
+      }
+    } catch (err) {
+      results.push({ ref: op.ref ?? null, action: op.action, ok: false, error: err instanceof Error ? err.message : "Unknown error" });
+      return { success: false, results };
+    }
+  }
+
+  return { success: true, results };
+}
+
 export async function getGoalContextText(goalId: string, userId: string): Promise<string> {
   const supabase = getSupabaseClient();
   try {

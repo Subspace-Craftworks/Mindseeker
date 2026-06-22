@@ -17,7 +17,8 @@ export const MCP_PROFILES: Record<string, string[] | "*"> = {
     "update_task",
     "create_event",
     "list_events",
-    "summarize_context"
+    "summarize_context",
+    "send_payload"
     // EXCLUDES bulk_add_goal_data and artifact tools
   ],
   
