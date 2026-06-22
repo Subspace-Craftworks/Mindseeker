@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import { ArrowRight, Network, Sparkles, Archive, GitBranch, ShieldCheck, Check, X } from 'lucide-react';
 import './style.css';
 
@@ -85,6 +86,7 @@ function App() {
       </div>
       <p>© 2026 Subspace Craftworks. All rights reserved.</p>
     </footer>
+    <Analytics />
   </main>;
 }
 
