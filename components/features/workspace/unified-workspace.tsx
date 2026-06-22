@@ -417,7 +417,7 @@ export function UnifiedWorkspace() {
     [contextMap, showInactive],
   );
 
-  // Sync selected goal when switching threads or when thread data updates
+  // Sync selected goal when switching threads or when thread/context data updates
   useEffect(() => {
     if (!activeThread) return;
     const threadGoalId = activeThread.current_goal_id;
@@ -428,7 +428,7 @@ export function UnifiedWorkspace() {
         setSelectedGoalId(threadGoalId);
       }
     }
-  }, [activeThreadId, activeThread?.current_goal_id]);
+  }, [activeThreadId, activeThread?.current_goal_id, contextMap]);
 
   useEffect(() => {
     let active = true;
