@@ -16,7 +16,7 @@ type JsonRpcRequest = {
 const headers = {
   "content-type": "application/json; charset=utf-8",
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "authorization, content-type, x-client-info, apikey",
+  "access-control-allow-headers": "authorization, content-type, x-client-info, apikey, x-api-key",
   "access-control-allow-methods": "POST, OPTIONS",
 };
 
@@ -48,28 +48,38 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ profile: string }> }) {
-  // 1. Authenticate Request
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return json({ error: "Unauthorized" }, 401);
-  }
-
-  const token = authHeader.split(" ")[1];
-  const secret = process.env.OAUTH_JWT_SECRET;
-  if (!secret) {
-    return json({ error: "Server misconfiguration" }, 500);
-  }
-
+  // 1. Authenticate Request — supports both API Key (Dify) and OAuth JWT (ChatGPT)
   let userId: string;
-  try {
-    const secretBytes = new TextEncoder().encode(secret);
-    const { payload } = await jwtVerify(token, secretBytes);
-    if (payload.type !== "access" || !payload.user_id) {
-      throw new Error("Invalid token payload");
+
+  const apiKey = req.headers.get("x-api-key");
+  const mcpApiKey = process.env.MCP_API_KEY;
+
+  if (apiKey && mcpApiKey && apiKey === mcpApiKey) {
+    // API Key auth (Dify): user_id will be resolved from session_id in executeTool
+    userId = "__api_key__";
+  } else {
+    // OAuth JWT auth (ChatGPT, etc.)
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return json({ error: "Unauthorized" }, 401);
     }
-    userId = payload.user_id as string;
-  } catch (e) {
-    return json({ error: "Invalid or expired token" }, 401);
+
+    const token = authHeader.split(" ")[1];
+    const secret = process.env.OAUTH_JWT_SECRET;
+    if (!secret) {
+      return json({ error: "Server misconfiguration" }, 500);
+    }
+
+    try {
+      const secretBytes = new TextEncoder().encode(secret);
+      const { payload } = await jwtVerify(token, secretBytes);
+      if (payload.type !== "access" || !payload.user_id) {
+        throw new Error("Invalid token payload");
+      }
+      userId = payload.user_id as string;
+    } catch (e) {
+      return json({ error: "Invalid or expired token" }, 401);
+    }
   }
 
   // 1.5 Parse Profile
