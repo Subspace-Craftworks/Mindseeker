@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ table
     const body = await req.json();
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (body.status !== undefined) updates.status = body.status;
-    if (body.is_active !== undefined) updates.is_active = body.is_active;
+    if (body.visibility !== undefined) updates.visibility = body.visibility;
 
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase

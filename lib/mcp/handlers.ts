@@ -113,7 +113,7 @@ async function completeGoal(supabase: SupabaseClient, params: JsonObject) {
 
   const { data: updatedGoal, error: updateError } = await supabase
     .from("goals")
-    .update({ status: "inactive", updated_at: new Date().toISOString() })
+    .update({ status: "completed", updated_at: new Date().toISOString() })
     .eq("id", goalId)
     .eq("user_id", userId)
     .select("*")
@@ -208,8 +208,8 @@ async function updateSubject(supabase: SupabaseClient, params: JsonObject) {
   if (description !== undefined) patch.description = description;
   if (status) patch.status = status;
   if (priority) patch.priority = priority;
-  const isActiveSubject = params.is_active;
-  if (isActiveSubject === true || isActiveSubject === false) patch.is_active = isActiveSubject;
+  const visibilitySubject = cleanString(params.visibility);
+  if (visibilitySubject) patch.visibility = visibilitySubject;
 
   if (Object.keys(patch).length === 0) {
     throw new Error("At least one field must be provided");
@@ -287,14 +287,14 @@ async function updateIssue(supabase: SupabaseClient, params: JsonObject) {
   const description = params.description === undefined ? undefined : cleanString(params.description);
   const status = cleanString(params.status);
   const severity = cleanString(params.severity);
-  const isActive = params.is_active;
+  const visibilityIssue = cleanString(params.visibility);
 
   if (subjectId) patch.subject_id = subjectId;
   if (title) patch.title = title;
   if (description !== undefined) patch.description = description;
   if (status) patch.status = status;
   if (severity) patch.severity = severity;
-  if (isActive === true || isActive === false) patch.is_active = isActive;
+  if (visibilityIssue) patch.visibility = visibilityIssue;
 
   if (Object.keys(patch).length === 0) {
     throw new Error("At least one field must be provided");
@@ -384,8 +384,8 @@ async function updateTask(supabase: SupabaseClient, params: JsonObject) {
   if (status) patch.status = status;
   if (dueDate !== undefined) patch.due_date = dueDate;
   if (assignee !== undefined) patch.assignee = assignee;
-  const isActiveTask = params.is_active;
-  if (isActiveTask === true || isActiveTask === false) patch.is_active = isActiveTask;
+  const visibilityTask = cleanString(params.visibility);
+  if (visibilityTask) patch.visibility = visibilityTask;
 
   if (Object.keys(patch).length === 0) {
     throw new Error("At least one field must be provided");

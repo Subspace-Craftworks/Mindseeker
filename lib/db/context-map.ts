@@ -8,6 +8,7 @@ export type ContextMapGoal = {
   id: string;
   title: string;
   status: string;
+  visibility?: string;
   subjects: ContextMapItem[];
   issues: ContextMapItem[];
   tasks: ContextMapItem[];
@@ -30,6 +31,7 @@ export async function getContextMap(userId: string): Promise<ContextMap> {
     id: g.id,
     title: g.title || "Untitled goal",
     status: g.status || "active",
+    visibility: g.visibility || "visible",
     subjects: g.subjects ?? [],
     issues: g.issues ?? [],
     tasks: g.tasks ?? [],
@@ -56,6 +58,7 @@ export async function getGoalContext(userId: string, goalId: string): Promise<Co
     id: g.id,
     title: g.title || "Untitled goal",
     status: g.status || "active",
+    visibility: g.visibility || "visible",
     subjects: g.subjects ?? [],
     issues: g.issues ?? [],
     tasks: g.tasks ?? [],

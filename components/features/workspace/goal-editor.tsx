@@ -142,9 +142,9 @@ function RecordListItem({
               fontSize: 10,
               padding: "2px 6px",
               borderRadius: "var(--radius-sm)",
-              background: item.is_active === false ? "transparent" : "var(--accent)",
-              color: item.is_active === false ? "var(--muted)" : "white",
-              border: item.is_active === false ? "1px solid var(--line)" : "none",
+              background: item.visibility === "hidden" ? "transparent" : "var(--accent)",
+              color: item.visibility === "hidden" ? "var(--muted)" : "white",
+              border: item.visibility === "hidden" ? "1px solid var(--line)" : "none",
             }}
           >
             {String(item.status)}
@@ -219,9 +219,9 @@ function RecordListItem({
 
               {table !== "events" && (
               <div style={{ display: "flex", gap: 4 }}>
-                {(["active", "inactive"] as const).map((s) => {
-                  const isActive = item.is_active !== false;
-                  const isSelected = s === "active" ? isActive : !isActive;
+                {(["visible", "hidden"] as const).map((s) => {
+                  const isVisible = item.visibility !== "hidden";
+                  const isSelected = s === "visible" ? isVisible : !isVisible;
                   return (
                     <button
                       key={s}
@@ -237,12 +237,12 @@ function RecordListItem({
                               "Content-Type": "application/json",
                               Authorization: `Bearer ${sessionToken}`,
                             },
-                            body: JSON.stringify({ is_active: s === "active" }),
+                            body: JSON.stringify({ visibility: s }),
                           });
                           if (!res.ok) throw new Error("Update failed");
                           onRefresh();
                         } catch (e) {
-                          setErrorMsg("Failed to update status");
+                          setErrorMsg("Failed to update visibility");
                         } finally {
                           setUpdating(false);
                         }
@@ -519,7 +519,7 @@ export function GoalEditor({
 
       if (table === "subjects") {
         payload.goal_id = detail.goal.id;
-        payload.status = "active";
+        payload.status = "open";
       } else if (table === "issues" || table === "tasks") {
         payload.subject_id = activeSubjectId;
         payload.status = table === "tasks" ? "todo" : "open";
@@ -724,7 +724,7 @@ export function GoalEditor({
           Related data
           <label style={{ fontSize: 10, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer", textTransform: "none", letterSpacing: "normal", fontWeight: 400 }}>
             <input type="checkbox" checked={showInactiveRelated} onChange={(e) => setShowInactiveRelated(e.target.checked)} />
-            show Inactive
+            show Hidden
           </label>
         </div>
 
@@ -740,19 +740,18 @@ export function GoalEditor({
           const addDisabled = needsSubject && !activeSubjectId;
           const hideAddButton = table === "events";
 
-          const INACTIVE_STATUSES = ["inactive", "done", "completed", "resolved", "closed", "cancelled"];
-          const inactiveSubjectIds = new Set(
+          const hiddenSubjectIds = new Set(
             (detail.subjects as Record<string, unknown>[])
-              .filter((s) => s.is_active === false)
+              .filter((s) => s.visibility === "hidden")
               .map((s) => String(s.id))
           );
           const filteredItems = showInactiveRelated
             ? items
             : (items as Record<string, unknown>[]).filter((item) => {
-                // Hide items that are themselves inactive
-                if (item.is_active === false) return false;
-                // Hide children of inactive subjects (issues/tasks)
-                if ((table === "issues" || table === "tasks") && inactiveSubjectIds.has(String(item.subject_id ?? ""))) return false;
+                // Hide items that are hidden
+                if (item.visibility === "hidden") return false;
+                // Hide children of hidden subjects (issues/tasks)
+                if ((table === "issues" || table === "tasks") && hiddenSubjectIds.has(String(item.subject_id ?? ""))) return false;
                 return true;
               });
 

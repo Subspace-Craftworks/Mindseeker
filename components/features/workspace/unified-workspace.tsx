@@ -63,6 +63,7 @@ type ContextMap = {
     id: string;
     title: string;
     status: string;
+    visibility?: string;
     subjects: { title: string }[];
     issues: { title: string }[];
     tasks: { title: string }[];
@@ -72,6 +73,7 @@ type ContextMap = {
     id: string;
     title: string;
     status: string;
+    visibility?: string;
     subjects: { title: string }[];
     issues: { title: string }[];
     tasks: { title: string }[];
@@ -357,7 +359,7 @@ function ContextGoalBlock({
         borderRadius: "var(--radius-md)",
         border: "none",
         background: isActiveEditor ? "var(--accent)" : selected ? "var(--panel-2)" : "transparent",
-        color: isActiveEditor ? "white" : goal.status === "inactive" ? "var(--muted)" : "inherit",
+        color: isActiveEditor ? "white" : goal.visibility === "hidden" ? "var(--muted)" : "inherit",
         opacity: selected || isActiveEditor ? 1 : 0.75,
         cursor: "pointer",
         display: "flex",
@@ -378,7 +380,7 @@ function ContextGoalBlock({
             textOverflow: "ellipsis",
           }}
         >
-          {goal.title}{goal.status === "inactive" ? " (Inactive)" : ""}
+          {goal.title}{goal.visibility === "hidden" ? " (Hidden)" : ""}
         </div>
       </div>
     </button>
@@ -413,7 +415,7 @@ export function UnifiedWorkspace() {
   );
 
   const visibleGoals = useMemo(
-    () => contextMap?.goals.filter((g) => showInactive || g.status === "active") ?? [],
+    () => contextMap?.goals.filter((g) => showInactive || g.visibility !== "hidden") ?? [],
     [contextMap, showInactive],
   );
 
@@ -1173,7 +1175,7 @@ export function UnifiedWorkspace() {
             </div>
             <label style={{ fontSize: 10, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-              Inactiveも表示
+              Hiddenも表示
             </label>
           </div>
           {contextMap ? (
