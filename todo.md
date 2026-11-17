@@ -9,7 +9,7 @@ Updated: 2026-06-20
 
 ## LP / ドメイン
 
-- [ ] LP の Workspace preview にスクリーンショット追加
+- [ ] LP の Workspace preview にスクリーンショット追加（LP は https://github.com/Subspace-Craftworks/mindseeker-lp に移管済み）
 
 ## MCP / カスタムGPT
 
@@ -18,6 +18,5 @@ Updated: 2026-06-20
 
 ## コード整理
 
-- [ ] tools/check-lp-deploy.ts を削除（一時的なデバッグ用）
 - [ ] .env.newvercel を削除（一時ファイル）
 - [ ] application_logs の MCP ツールログ（デバッグ用）を残すか削除するか決定
